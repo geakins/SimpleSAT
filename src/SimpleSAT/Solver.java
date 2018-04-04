@@ -9,7 +9,7 @@ public final class Solver {
 
         final Formula formula = new Formula(args[0]);
 
-        //formula.solve();
+        //formula.bruteForceSATSolver();
         formula.solve();
         //System.out.println(formula.isFormulaSatisfiable());
 

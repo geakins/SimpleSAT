@@ -1,12 +1,14 @@
 package SimpleSAT;
 
 public class Literal {
-    // literal is the actual # in the CNF file of the literal.
+    // literal is the actual # in the CNF file of the literal.  Value is always positive.
     private int literal;
     // value is the T or F value assigned to the literal during the algorithm.
     private boolean value;
     // assigned is a flag that marks if the literal has been assigned or not.
     private boolean assigned;
+    // Counts the number of appearances in the formula.
+    private int appearances;
 
     // The constructor method.  This takes the array of integers in a[] and assigns them to the variables array.
     Literal(final int a) {
@@ -25,11 +27,16 @@ public class Literal {
         literal = literalObject.literal;
         value = literalObject.value;
         assigned = literalObject.assigned;
+        appearances = literalObject.appearances;
     }
 
     void assign(boolean val) {
         value = val;
         assigned = true;
+    }
+
+    void setLiteralCount(int count) {
+        appearances = count;
     }
 
     boolean isAssigned() {
@@ -44,6 +51,10 @@ public class Literal {
         return value;
     }
 
+    int getAppearances() {
+        return appearances;
+    }
+
     // Set the number of the literal
     void set(int lit) {
         this.literal = lit;
@@ -51,8 +62,8 @@ public class Literal {
 
     @Override
     public String toString() {
-        String output = "";
-        output = output + literal;
+        String output;
+        output = literal + " " + Boolean.toString(value);
         return output;
     }
 
@@ -61,7 +72,7 @@ public class Literal {
     {
         if (object instanceof Literal)
         {
-            return (this.literal == ((Literal) object).literal);
+            return (this.literal == ((Literal) object).literal) && (this.value == ((Literal) object).value);
         }
         return false;
     }

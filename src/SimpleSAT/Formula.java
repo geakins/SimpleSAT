@@ -15,7 +15,8 @@ public class Formula {
     private ArrayList<Clause> clauseList;
     private ArrayList<Literal> formulaSolution;
 
-    private int numVariables, numClauses, numAssignedVariables, selectedLiteralIndex;
+    private int numVariables, numClauses;
+    private long numRecursions;
 
     private boolean isFormulaSAT = false;
 
@@ -23,6 +24,7 @@ public class Formula {
     Formula(final String fileName) {
         importCNF(fileName);
         formulaSolution = new ArrayList<>(numVariables);
+        numRecursions = 0;
     }
 
     /**
@@ -62,6 +64,7 @@ public class Formula {
         Literal literalCompare = new Literal(0);
         // Allocate the maximum amount of memory that could possibly be needed.
         int[] intBuffer = new int[numVariables*numClauses];
+        System.out.println("Clauses:");
         for(int i = 0; sc.hasNextInt(); i++) {
             intBuffer[i] = sc.nextInt();
 
@@ -77,7 +80,7 @@ public class Formula {
                 clauseList.add(new Clause(Arrays.copyOfRange(intBuffer, start, end)));
 
                 //clauseList[clause] = new Clause(Arrays.copyOfRange(intBuffer, start, end));
-                System.out.println("Clause: " + clauseList.get(clause));
+                System.out.println(clauseList.get(clause));
                 start = i + 1;
                 end = start;
                 clause++;
@@ -85,19 +88,23 @@ public class Formula {
                 end++;
             }
         }
+
+        // Sort the master list of literals such that the most frequent ones will be selected on first.
+        sortLiteralList();
         System.out.println("Literals: " + literalList);
 
         sc.close();
     }
 
     void solve() {
-        ArrayList<Clause> dynamicClauseArray = new ArrayList<>(clauseList.size());
         ArrayList<Literal> assignedLiterals = new ArrayList<>(1);
 
-        // Copy all clauses from clauseList to the dynamicClauseArray that will be modified in DPLL.
-        dynamicClauseArray.addAll(clauseList);
+        DPLL(clauseList, assignedLiterals);
 
-        DPLL(dynamicClauseArray, assignedLiterals);
+        if (!isFormulaSAT) {
+            System.out.println("No solution found.");
+            System.out.println("Decisions: " + numRecursions);
+        }
     }
 
     private boolean DPLL (ArrayList<Clause> dynamicClauseArray, ArrayList<Literal> assignedLiterals) {
@@ -106,8 +113,11 @@ public class Formula {
         Literal rightLiteral;
         ArrayList<Literal> leftLiteralBranch = new ArrayList<>(1);
         ArrayList<Literal> rightLiteralBranch = new ArrayList<>(1);
-        ArrayList<Clause> leftClauseBranch = new ArrayList<>(1);
-        ArrayList<Clause> rightClauseBranch = new ArrayList<>(1);
+
+        for (Clause clause : dynamicClauseArray) {
+            clause.resetClause();
+        }
+        assignLiteralListToClause(assignedLiterals);
 
         // Exit all recursions if the isFormulaSAT flag is set to true.  This is set when the whole dynamicClauseArray
         // is determined to be satisfied.
@@ -115,11 +125,21 @@ public class Formula {
             return true;
         }
 
+        int i = 1;
+        while (i != 0) {
+            i = updateUnitClauses(dynamicClauseArray, assignedLiterals);
+            if (i == -1) {
+                return false;
+            }
+        }
+
+        numRecursions++;
+
         // Copy all relevant data structures to new structures to pass to the next iteration of DPLL.
-        copyDataStructures(assignedLiterals, dynamicClauseArray, leftLiteralBranch, rightLiteralBranch, leftClauseBranch, rightClauseBranch);
+        copyDataStructures(assignedLiterals, leftLiteralBranch, rightLiteralBranch);
 
         // Pick a new literal to branch on
-        nextLiteral = pickLiteral(assignedLiterals);
+        nextLiteral = pickLiteral(dynamicClauseArray, assignedLiterals);
 
         // Check to see if the formula is SAT based on the current clause list.
         // Print solution and return if solution is found.
@@ -141,25 +161,71 @@ public class Formula {
             // Set up the parameters for the left branch with the new literal and a false value.
             leftLiteral = new Literal(nextLiteral, false);
             leftLiteralBranch.add(leftLiteral);
-            assignLiteralToClauses(leftClauseBranch, leftLiteral);
 
             // Set up the parameters for the right branch with the new literal and a true value.
             rightLiteral = new Literal(nextLiteral, true);
             rightLiteralBranch.add(rightLiteral);
-            assignLiteralToClauses(rightClauseBranch, rightLiteral);
 
             // Make the recursive call
-            return (DPLL(leftClauseBranch, leftLiteralBranch) || DPLL(rightClauseBranch, rightLiteralBranch));
+            return (DPLL(dynamicClauseArray, leftLiteralBranch) || DPLL(dynamicClauseArray, rightLiteralBranch));
         }
 
         return false;
+    }
+
+    private void assignLiteralListToClause(ArrayList<Literal> currentLiterals) {
+        for (Literal literal : currentLiterals) {
+            for (Clause clause : clauseList) {
+                clause.assign(literal);
+            }
+        }
+    }
+
+    private int updateUnitClauses(ArrayList<Clause> currentClauseList, ArrayList<Literal> currentAssignedLiterals) {
+        int forcedVariable;
+        boolean forcedValue;
+        ArrayList<Literal> forcedLiterals = new ArrayList<>(0);
+
+        for (Clause clause : currentClauseList) {
+            forcedVariable = clause.findImplications();
+            if (forcedVariable != 0) {
+                // Unit clause found
+                if (forcedVariable > 0) {
+                    forcedValue = true;
+                } else {
+                    forcedValue = false;
+                }
+                forcedLiterals.add(new Literal(Math.abs(forcedVariable), forcedValue));
+            }
+        }
+
+        int numberForced = 0;
+        for (Literal literal : forcedLiterals) {
+            int occurrences = Collections.frequency(forcedLiterals, literal);
+            if (occurrences == 1 || forcedLiterals.size() == 1) {
+                assignLiteralToClauses(currentClauseList, literal);
+                currentAssignedLiterals.add(new Literal(literal));
+                numberForced++;
+            }
+            else {
+
+                for (int i = 0; i < forcedLiterals.size(); i++) {
+                    if (literal.getValue() != forcedLiterals.get(i).getValue()) {
+                        // Conflict detected
+                        return -1;
+                    }
+                }
+            }
+        }
+        if (numberForced > 0 ) return numberForced;
+        else return 0;
     }
 
     // This is a dumb function to pick a new literal to branch on.
     // assignedLiterals is an ArrayList of literals that have already been picked.
     // pickLiteral simply picks a value that has not been picked.
     // If all literals have been picked, it returns -1 to let the calling function know.
-    private int pickLiteral(ArrayList<Literal> assignedLiterals) {
+    private int pickLiteral(ArrayList<Clause> currentClauseList, ArrayList<Literal> assignedLiterals) {
         for (Literal literal : literalList) {
             if (!assignedLiterals.contains(literal)) {
                 return literal.getLiteral();
@@ -167,6 +233,31 @@ public class Formula {
         }
 
         return -1;
+    }
+
+    private void sortLiteralList() {
+        int literalCount ;
+        for (Literal literal : literalList) {
+            literalCount = countLiteralAppearances(clauseList, literal);
+            literal.setLiteralCount(literalCount);
+        }
+        Collections.sort(literalList, new Comparator<Literal>() {
+            @Override public int compare(Literal lit1, Literal lit2) {
+                return lit2.getAppearances() - lit1.getAppearances();
+            }
+
+        });
+    }
+
+    // Counts the number of times a literal appears in a list of clauses
+    private int countLiteralAppearances(ArrayList<Clause> currentClauseList, Literal literal) {
+        int count = 0;
+        for (Clause clause : currentClauseList) {
+            if (clause.literalExists(literal)) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private void assignLiteralToClauses(ArrayList<Clause> clauseSubList, Literal newLiteral) {
@@ -181,7 +272,6 @@ public class Formula {
                 return false;
             }
         }
-
         return true;
     }
 
@@ -200,32 +290,25 @@ public class Formula {
         }
 
         System.out.println(output.toString());
+        System.out.println("Decisions: " + numRecursions);
     }
 
-    private void copyDataStructures(ArrayList<Literal> assignedLiterals, ArrayList<Clause> dynamicClauseArray, ArrayList<Literal> leftLiteralBranch, ArrayList<Literal> rightLiteralBranch, ArrayList<Clause> leftClauseBranch, ArrayList<Clause> rightClauseBranch) {
+    private void copyDataStructures(ArrayList<Literal> assignedLiterals, ArrayList<Literal> leftLiteralBranch, ArrayList<Literal> rightLiteralBranch) {
         // Copy the incoming clause list to a new list that will be passed to the left and right recursive calls.
         // Prune out satisfied clauses while doing this.
-        for (Clause clause : dynamicClauseArray) {
+        /*for (Clause clause : dynamicClauseArray) {
             if (!clause.isSAT()) {
                 leftClauseBranch.add(new Clause(clause));
                 rightClauseBranch.add(new Clause(clause));
             }
 
-        }
+        }*/
 
         // Copy the assigned literals to two new lists that will be used in the recursive calls
-        leftLiteralBranch.addAll(assignedLiterals);
-        rightLiteralBranch.addAll(assignedLiterals);
 
-        /*for (int i = 0; i < assignedLiterals.size(); i++) {
-            leftLiteralBranch.add(new Literal(assignedLiterals.get(i)));
-            rightLiteralBranch.add(new Literal(assignedLiterals.get(i)));
-        }*/
-    }
-
-    private void assignValueToClauses(Literal newLiteral) {
-        for (int i = 0; i < numClauses; i++) {
-            clauseList.get(i).assign(newLiteral);
+        for (Literal literal : assignedLiterals) {
+            leftLiteralBranch.add(new Literal(literal));
+            rightLiteralBranch.add(new Literal(literal));
         }
     }
 
@@ -236,6 +319,17 @@ public class Formula {
             }
         }
         return true;
+    }
+
+    // In the event that we implement a clause list reduction, this method will delete all SAT clauses from a list.
+    private void pruneSATClauses(ArrayList<Clause> clauseListToPrune) {
+        Iterator<Clause> iterator = clauseListToPrune.iterator();
+
+        while (iterator.hasNext()) {
+            if (iterator.next().isSAT()) {
+                iterator.remove();
+            }
+        }
     }
 
     public void bruteForceSATSolver() {
