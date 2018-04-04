@@ -72,7 +72,7 @@ public class Literal {
     {
         if (object instanceof Literal)
         {
-            return (this.literal == ((Literal) object).literal) && (this.value == ((Literal) object).value);
+            return ((this.literal == ((Literal) object).literal) && (this.value == ((Literal) object).value));
         }
         return false;
     }

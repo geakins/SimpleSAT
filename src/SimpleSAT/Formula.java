@@ -1,7 +1,6 @@
 package SimpleSAT;
 
 import java.io.FileNotFoundException;
-import java.lang.reflect.Array;
 import java.math.BigInteger;
 import java.util.*;
 import java.io.BufferedInputStream;
@@ -16,7 +15,7 @@ public class Formula {
     private ArrayList<Literal> formulaSolution;
 
     private int numVariables, numClauses;
-    private long numRecursions;
+    private long numDecisions;
 
     private boolean isFormulaSAT = false;
 
@@ -24,7 +23,7 @@ public class Formula {
     Formula(final String fileName) {
         importCNF(fileName);
         formulaSolution = new ArrayList<>(numVariables);
-        numRecursions = 0;
+        numDecisions = 0;
     }
 
     /**
@@ -103,7 +102,7 @@ public class Formula {
 
         if (!isFormulaSAT) {
             System.out.println("No solution found.");
-            System.out.println("Decisions: " + numRecursions);
+            System.out.println("Decisions: " + numDecisions);
         }
     }
 
@@ -114,9 +113,11 @@ public class Formula {
         ArrayList<Literal> leftLiteralBranch = new ArrayList<>(1);
         ArrayList<Literal> rightLiteralBranch = new ArrayList<>(1);
 
-        for (Clause clause : dynamicClauseArray) {
-            clause.resetClause();
-        }
+        // Before entering each recursion, we need to reset the state of the clause array, since all DPLL calls
+        // use the same clauseList;
+        resetClauseListState();
+
+        // Go through the list of clauses and assign values to them.
         assignLiteralListToClause(assignedLiterals);
 
         // Exit all recursions if the isFormulaSAT flag is set to true.  This is set when the whole dynamicClauseArray
@@ -125,15 +126,20 @@ public class Formula {
             return true;
         }
 
-        int i = 1;
+        // Update the unit clauses.  This is the workhorse for DPLL.  Continue trying until no improvement is made.
+        // updateUnitClauses returns -1 if a conflict is detected.  The recursion will exit if this is found.
+        /*int i = 1;
         while (i != 0) {
             i = updateUnitClauses(dynamicClauseArray, assignedLiterals);
             if (i == -1) {
                 return false;
             }
-        }
+        }*/
 
-        numRecursions++;
+        if (updateUnitClauses(dynamicClauseArray, assignedLiterals) == -1) return false;
+
+        // Keep track of how many decisions we make in the algorithm.
+        numDecisions++;
 
         // Copy all relevant data structures to new structures to pass to the next iteration of DPLL.
         copyDataStructures(assignedLiterals, leftLiteralBranch, rightLiteralBranch);
@@ -173,6 +179,12 @@ public class Formula {
         return false;
     }
 
+    private void resetClauseListState () {
+        for (Clause clause : clauseList) {
+            clause.resetClause();
+        }
+    }
+
     private void assignLiteralListToClause(ArrayList<Literal> currentLiterals) {
         for (Literal literal : currentLiterals) {
             for (Clause clause : clauseList) {
@@ -183,42 +195,47 @@ public class Formula {
 
     private int updateUnitClauses(ArrayList<Clause> currentClauseList, ArrayList<Literal> currentAssignedLiterals) {
         int forcedVariable;
+        int numberForced = 1;
         boolean forcedValue;
         ArrayList<Literal> forcedLiterals = new ArrayList<>(0);
 
-        for (Clause clause : currentClauseList) {
-            forcedVariable = clause.findImplications();
-            if (forcedVariable != 0) {
-                // Unit clause found
-                if (forcedVariable > 0) {
-                    forcedValue = true;
-                } else {
-                    forcedValue = false;
+        while ( numberForced != 0 ) {
+            forcedLiterals.clear();
+            for (Clause clause : currentClauseList) {
+                forcedVariable = clause.findImplications();
+                if (forcedVariable != 0) {
+                    // Unit clause found
+                    if (forcedVariable > 0) {
+                        forcedValue = true;
+                    } else {
+                        forcedValue = false;
+                    }
+                    forcedLiterals.add(new Literal(Math.abs(forcedVariable), forcedValue));
                 }
-                forcedLiterals.add(new Literal(Math.abs(forcedVariable), forcedValue));
             }
-        }
 
-        int numberForced = 0;
-        for (Literal literal : forcedLiterals) {
-            int occurrences = Collections.frequency(forcedLiterals, literal);
-            if (occurrences == 1 || forcedLiterals.size() == 1) {
-                assignLiteralToClauses(currentClauseList, literal);
-                currentAssignedLiterals.add(new Literal(literal));
-                numberForced++;
-            }
-            else {
+            numberForced = 0;
+            for (Literal literal : forcedLiterals) {
+                int occurrences = Collections.frequency(forcedLiterals, literal);
+                if (occurrences == 1 || forcedLiterals.size() == 1) {
+                    assignLiteralToClauses(currentClauseList, literal);
+                    currentAssignedLiterals.add(new Literal(literal));
+                    numberForced++;
+                } else {
 
-                for (int i = 0; i < forcedLiterals.size(); i++) {
-                    if (literal.getValue() != forcedLiterals.get(i).getValue()) {
-                        // Conflict detected
-                        return -1;
+                    for (int i = 0; i < forcedLiterals.size(); i++) {
+                        if (literal.getLiteral() == forcedLiterals.get(i).getLiteral()) {
+                            if (literal.getValue() != forcedLiterals.get(i).getValue()) {
+                                // Conflict detected
+                                return -1;
+                            }
+                        }
                     }
                 }
+
             }
         }
-        if (numberForced > 0 ) return numberForced;
-        else return 0;
+        return 0;
     }
 
     // This is a dumb function to pick a new literal to branch on.
@@ -290,7 +307,7 @@ public class Formula {
         }
 
         System.out.println(output.toString());
-        System.out.println("Decisions: " + numRecursions);
+        System.out.println("Decisions: " + numDecisions);
     }
 
     private void copyDataStructures(ArrayList<Literal> assignedLiterals, ArrayList<Literal> leftLiteralBranch, ArrayList<Literal> rightLiteralBranch) {
