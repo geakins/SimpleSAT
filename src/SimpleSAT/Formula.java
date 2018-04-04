@@ -118,7 +118,7 @@ public class Formula {
         resetClauseListState();
 
         // Go through the list of clauses and assign values to them.
-        assignLiteralListToClause(assignedLiterals);
+        assignLiteralListToClauseList(assignedLiterals);
 
         // Exit all recursions if the isFormulaSAT flag is set to true.  This is set when the whole dynamicClauseArray
         // is determined to be satisfied.
@@ -126,16 +126,8 @@ public class Formula {
             return true;
         }
 
-        // Update the unit clauses.  This is the workhorse for DPLL.  Continue trying until no improvement is made.
-        // updateUnitClauses returns -1 if a conflict is detected.  The recursion will exit if this is found.
-        /*int i = 1;
-        while (i != 0) {
-            i = updateUnitClauses(dynamicClauseArray, assignedLiterals);
-            if (i == -1) {
-                return false;
-            }
-        }*/
-
+        // Update the unit clauses.  This is the workhorse for DPLL.
+        // updateUnitClauses returns -1 if a conflict is detected, so exit if this is found.
         if (updateUnitClauses(dynamicClauseArray, assignedLiterals) == -1) return false;
 
         // Keep track of how many decisions we make in the algorithm.
@@ -185,7 +177,7 @@ public class Formula {
         }
     }
 
-    private void assignLiteralListToClause(ArrayList<Literal> currentLiterals) {
+    private void assignLiteralListToClauseList(ArrayList<Literal> currentLiterals) {
         for (Literal literal : currentLiterals) {
             for (Clause clause : clauseList) {
                 clause.assign(literal);
@@ -311,18 +303,7 @@ public class Formula {
     }
 
     private void copyDataStructures(ArrayList<Literal> assignedLiterals, ArrayList<Literal> leftLiteralBranch, ArrayList<Literal> rightLiteralBranch) {
-        // Copy the incoming clause list to a new list that will be passed to the left and right recursive calls.
-        // Prune out satisfied clauses while doing this.
-        /*for (Clause clause : dynamicClauseArray) {
-            if (!clause.isSAT()) {
-                leftClauseBranch.add(new Clause(clause));
-                rightClauseBranch.add(new Clause(clause));
-            }
-
-        }*/
-
         // Copy the assigned literals to two new lists that will be used in the recursive calls
-
         for (Literal literal : assignedLiterals) {
             leftLiteralBranch.add(new Literal(literal));
             rightLiteralBranch.add(new Literal(literal));
