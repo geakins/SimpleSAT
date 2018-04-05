@@ -15,8 +15,8 @@ public class Formula {
     private ArrayList<Literal> formulaSolution;
 
     private int numVariables, numClauses;
-    private long numDecisions;
-    private long numConflicts;
+    private long numberOfDecisions;
+    private long numberOfConflicts;
 
     private boolean isFormulaSAT = false;
 
@@ -24,7 +24,7 @@ public class Formula {
     Formula(final String fileName) {
         importCNF(fileName);
         formulaSolution = new ArrayList<>(numVariables);
-        numDecisions = 0;
+        numberOfDecisions = 0;
     }
 
     /**
@@ -103,7 +103,7 @@ public class Formula {
 
         if (!isFormulaSAT) {
             System.out.println("No solution found.");
-            System.out.println("Decisions: " + numDecisions);
+            System.out.println("Decisions: " + numberOfDecisions);
         }
     }
 
@@ -131,7 +131,7 @@ public class Formula {
         if (updateUnitClauses(dynamicClauseArray, assignedLiterals) == -1) return false;
 
         // Keep track of how many decisions we make in the algorithm.  This is a decent metric of algorithm efficiency.
-        numDecisions++;
+        numberOfDecisions++;
 
         // Copy the Literal data structures to new structures to pass to the next iteration of DPLL.
         copyDataStructures(assignedLiterals, leftLiteralBranch, rightLiteralBranch);
@@ -196,7 +196,6 @@ public class Formula {
         int numberForced = 1;
         boolean forcedValue;
         Literal oppositeLiteral;
-        Literal forcedLiteral = new Literal(0);
         ArrayList<Literal> forcedLiterals = new ArrayList<>(0);
         // removedLiterals keeps track of Literals that have already been assigned in the case that there are more than
         // one instances of a forced literal.
@@ -205,7 +204,6 @@ public class Formula {
         while (numberForced != 0) {
             forcedLiterals.clear();
             removedLiterals.clear();
-            forcedLiteral.setLiteral(0);
             numberForced = 0;
             for (Clause clause : currentClauseList) {
                 // findImplications() returns the unassigned literal in unit clauses, or 0 otherwise.
@@ -218,14 +216,14 @@ public class Formula {
                         forcedValue = false;
                     }
 
-                    forcedLiteral = new Literal(Math.abs(forcedVariable), forcedValue);
-                    oppositeLiteral = new Literal(forcedLiteral);
+                    oppositeLiteral = new Literal(Math.abs(forcedVariable), forcedValue);
                     oppositeLiteral.complement();
                     // Add the new Literal to the forcedLiterals list.
-                    forcedLiterals.add(forcedLiteral);
+                    forcedLiterals.add(new Literal(Math.abs(forcedVariable), forcedValue));
 
                     // Conflict found.  Exit here to save quite a lot of time on assigning literals.
                     if ( forcedLiterals.contains(oppositeLiteral) ) {
+                        numberOfConflicts++;
                         return -1;
                     }
                 }
@@ -236,7 +234,7 @@ public class Formula {
                 if (literal.getLiteral() != 0 && !removedLiterals.contains(literal)) {
                     assignLiteralToClauses(currentClauseList, literal);
                     currentAssignedLiterals.add(new Literal(literal));
-                    removedLiterals.add(forcedLiteral);
+                    removedLiterals.add(literal);
                     numberForced++;
                 }
             }
@@ -316,7 +314,8 @@ public class Formula {
         }
 
         System.out.println(output.toString());
-        System.out.println("Decisions: " + numDecisions);
+        System.out.println("Decisions: " + numberOfDecisions);
+        System.out.println("Conflicts: " + numberOfConflicts);
     }
 
     private void copyDataStructures(ArrayList<Literal> assignedLiterals, ArrayList<Literal> leftLiteralBranch, ArrayList<Literal> rightLiteralBranch) {
