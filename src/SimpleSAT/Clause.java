@@ -70,7 +70,6 @@ public class Clause {
                 values[i] = literalToAssign.getValue();
                 if ((variables[i] > 0 && values[i]) || (variables[i] < 0 && !values[i])) {
                     isSAT = true;
-                    return;
                 }
             }
         }

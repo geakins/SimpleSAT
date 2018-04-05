@@ -224,7 +224,7 @@ public class Formula {
                     // Add the new Literal to the forcedLiterals list.
                     forcedLiterals.add(forcedLiteral);
 
-                    // Conflict found.
+                    // Conflict found.  Exit here to save quite a lot of time on assigning literals.
                     if ( forcedLiterals.contains(oppositeLiteral) ) {
                         return -1;
                     }
@@ -235,7 +235,7 @@ public class Formula {
             for ( Literal literal : forcedLiterals ) {
                 if (literal.getLiteral() != 0 && !removedLiterals.contains(literal)) {
                     assignLiteralToClauses(currentClauseList, literal);
-                    currentAssignedLiterals.add(new Literal(forcedLiteral));
+                    currentAssignedLiterals.add(new Literal(literal));
                     removedLiterals.add(forcedLiteral);
                     numberForced++;
                 }
