@@ -39,8 +39,12 @@ public class Literal {
         appearances = count;
     }
 
-    boolean isAssigned() {
-        return assigned;
+    void setLiteral(int lit) {
+        literal = lit;
+    }
+
+    void complement () {
+        value = !value;
     }
 
     int getLiteral() {

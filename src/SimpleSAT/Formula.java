@@ -16,6 +16,7 @@ public class Formula {
 
     private int numVariables, numClauses;
     private long numDecisions;
+    private long numConflicts;
 
     private boolean isFormulaSAT = false;
 
@@ -110,6 +111,7 @@ public class Formula {
         int nextLiteral;
         Literal leftLiteral;
         Literal rightLiteral;
+        // Each branch carries its own set of assigned literals
         ArrayList<Literal> leftLiteralBranch = new ArrayList<>(1);
         ArrayList<Literal> rightLiteralBranch = new ArrayList<>(1);
 
@@ -126,18 +128,16 @@ public class Formula {
             return true;
         }
 
-        // Update the unit clauses.  This is the workhorse for DPLL.
-        // updateUnitClauses returns -1 if a conflict is detected, so exit if this is found.
         if (updateUnitClauses(dynamicClauseArray, assignedLiterals) == -1) return false;
 
-        // Keep track of how many decisions we make in the algorithm.
+        // Keep track of how many decisions we make in the algorithm.  This is a decent metric of algorithm efficiency.
         numDecisions++;
 
-        // Copy all relevant data structures to new structures to pass to the next iteration of DPLL.
+        // Copy the Literal data structures to new structures to pass to the next iteration of DPLL.
         copyDataStructures(assignedLiterals, leftLiteralBranch, rightLiteralBranch);
 
-        // Pick a new literal to branch on
-        nextLiteral = pickLiteral(dynamicClauseArray, assignedLiterals);
+        // Pick a new literal to branch on.  Returns -1 if no literals are left.
+        nextLiteral = pickLiteral( assignedLiterals );
 
         // Check to see if the formula is SAT based on the current clause list.
         // Print solution and return if solution is found.
@@ -150,12 +150,10 @@ public class Formula {
         }
 
         // Return false if we've assigned all literals and the formula is not SAT
-        if (assignedLiterals.size() == literalList.size()) {
+        if (nextLiteral == -1) {
             return false;
-        }
-
-        // If nextLiteral is -1, that means all literals have been used, so this condition may not be necessary
-        if (nextLiteral != -1) {
+        } else {
+            // If nextLiteral is not -1, then a literal has been picked.  Process it.
             // Set up the parameters for the left branch with the new literal and a false value.
             leftLiteral = new Literal(nextLiteral, false);
             leftLiteralBranch.add(leftLiteral);
@@ -167,16 +165,17 @@ public class Formula {
             // Make the recursive call
             return (DPLL(dynamicClauseArray, leftLiteralBranch) || DPLL(dynamicClauseArray, rightLiteralBranch));
         }
-
-        return false;
     }
 
+    // This method must be called before each iteration through the DPLL function, since the algorithm uses the
+    // same clause list for all iterations.
     private void resetClauseListState () {
         for (Clause clause : clauseList) {
             clause.resetClause();
         }
     }
 
+    // Takes an ArrayList of Literals that have been assigned and makes them official with the clauseList.
     private void assignLiteralListToClauseList(ArrayList<Literal> currentLiterals) {
         for (Literal literal : currentLiterals) {
             for (Clause clause : clauseList) {
@@ -185,46 +184,61 @@ public class Formula {
         }
     }
 
+    // The workhorse method of DPLL.  It takes an ArrayList of Literals that has currently been assigned and searches
+    // through the clauseList for unit clauses.  It compiles a List of forced values and searches through those for
+    // two things:
+    // 1. A forced value
+    // 2. A conflict
+    // If forced values are found, they are assigned to the clause and the search starts again.
+    // If a conflict is found, -1 is returned.
     private int updateUnitClauses(ArrayList<Clause> currentClauseList, ArrayList<Literal> currentAssignedLiterals) {
         int forcedVariable;
         int numberForced = 1;
         boolean forcedValue;
+        Literal oppositeLiteral;
+        Literal forcedLiteral = new Literal(0);
         ArrayList<Literal> forcedLiterals = new ArrayList<>(0);
+        // removedLiterals keeps track of Literals that have already been assigned in the case that there are more than
+        // one instances of a forced literal.
+        ArrayList<Literal> removedLiterals = new ArrayList<>(0);
 
-        while ( numberForced != 0 ) {
+        while (numberForced != 0) {
             forcedLiterals.clear();
+            removedLiterals.clear();
+            forcedLiteral.setLiteral(0);
+            numberForced = 0;
             for (Clause clause : currentClauseList) {
+                // findImplications() returns the unassigned literal in unit clauses, or 0 otherwise.
                 forcedVariable = clause.findImplications();
                 if (forcedVariable != 0) {
-                    // Unit clause found
+                    // Unit clause found, assign it a value based on the literal sign
                     if (forcedVariable > 0) {
                         forcedValue = true;
                     } else {
                         forcedValue = false;
                     }
-                    forcedLiterals.add(new Literal(Math.abs(forcedVariable), forcedValue));
+
+                    forcedLiteral = new Literal(Math.abs(forcedVariable), forcedValue);
+                    oppositeLiteral = new Literal(forcedLiteral);
+                    oppositeLiteral.complement();
+                    // Add the new Literal to the forcedLiterals list.
+                    forcedLiterals.add(forcedLiteral);
+
+                    // Conflict found.
+                    if ( forcedLiterals.contains(oppositeLiteral) ) {
+                        return -1;
+                    }
                 }
             }
 
-            numberForced = 0;
-            for (Literal literal : forcedLiterals) {
-                int occurrences = Collections.frequency(forcedLiterals, literal);
-                if (occurrences == 1 || forcedLiterals.size() == 1) {
+            // Apply all found forced literals to the formula.
+            for ( Literal literal : forcedLiterals ) {
+                if (literal.getLiteral() != 0 && !removedLiterals.contains(literal)) {
                     assignLiteralToClauses(currentClauseList, literal);
-                    currentAssignedLiterals.add(new Literal(literal));
+                    currentAssignedLiterals.add(new Literal(forcedLiteral));
+                    removedLiterals.add(forcedLiteral);
                     numberForced++;
-                } else {
-
-                    for (int i = 0; i < forcedLiterals.size(); i++) {
-                        if (literal.getLiteral() == forcedLiterals.get(i).getLiteral()) {
-                            if (literal.getValue() != forcedLiterals.get(i).getValue()) {
-                                // Conflict detected
-                                return -1;
-                            }
-                        }
-                    }
                 }
-
             }
         }
         return 0;
@@ -234,9 +248,12 @@ public class Formula {
     // assignedLiterals is an ArrayList of literals that have already been picked.
     // pickLiteral simply picks a value that has not been picked.
     // If all literals have been picked, it returns -1 to let the calling function know.
-    private int pickLiteral(ArrayList<Clause> currentClauseList, ArrayList<Literal> assignedLiterals) {
+    private int pickLiteral(ArrayList<Literal> assignedLiterals) {
+        Literal oppositeLiteral;
         for (Literal literal : literalList) {
-            if (!assignedLiterals.contains(literal)) {
+            oppositeLiteral = new Literal(literal);
+            oppositeLiteral.complement();
+            if (!assignedLiterals.contains(literal) && !assignedLiterals.contains(oppositeLiteral)) {
                 return literal.getLiteral();
             }
         }

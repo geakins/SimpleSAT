@@ -29,6 +29,7 @@ public class Clause {
         Arrays.fill(this.assigned, false);
     }
 
+    // Constructor for deep copy.
     Clause (Clause clause) {
         size = clause.size;
         variables = new int[clause.variables.length];
