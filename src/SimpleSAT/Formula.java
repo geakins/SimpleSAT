@@ -20,11 +20,14 @@ public class Formula {
 
     private boolean isFormulaSAT = false;
 
+    private Random randomBoolean;
+
 
     Formula(final String fileName) {
         importCNF(fileName);
         formulaSolution = new ArrayList<>(numVariables);
         numberOfDecisions = 0;
+        randomBoolean = new Random();
     }
 
     /**
@@ -99,7 +102,7 @@ public class Formula {
     void solve() {
         ArrayList<Literal> assignedLiterals = new ArrayList<>(1);
 
-        DPLL(clauseList, assignedLiterals);
+        DPLL( assignedLiterals );
 
         if (!isFormulaSAT) {
             System.out.println("No solution found.");
@@ -107,7 +110,7 @@ public class Formula {
         }
     }
 
-    private boolean DPLL (ArrayList<Clause> dynamicClauseArray, ArrayList<Literal> assignedLiterals) {
+    private boolean DPLL (ArrayList<Literal> assignedLiterals) {
         int nextLiteral;
         Literal leftLiteral;
         Literal rightLiteral;
@@ -128,7 +131,7 @@ public class Formula {
             return true;
         }
 
-        if (updateUnitClauses(dynamicClauseArray, assignedLiterals) == -1) return false;
+        if (updateUnitClauses(clauseList, assignedLiterals) == -1) return false;
 
         // Keep track of how many decisions we make in the algorithm.  This is a decent metric of algorithm efficiency.
         numberOfDecisions++;
@@ -141,7 +144,7 @@ public class Formula {
 
         // Check to see if the formula is SAT based on the current clause list.
         // Print solution and return if solution is found.
-        if (isFormulaSAT(dynamicClauseArray)) {
+        if (isFormulaSAT(clauseList)) {
             isFormulaSAT = true;
             formulaSolution = new ArrayList<>(assignedLiterals);
             System.out.println("Solution found");
@@ -155,15 +158,17 @@ public class Formula {
         } else {
             // If nextLiteral is not -1, then a literal has been picked.  Process it.
             // Set up the parameters for the left branch with the new literal and a false value.
-            leftLiteral = new Literal(nextLiteral, false);
+            boolean nextValue = randomBoolean.nextBoolean();
+
+            leftLiteral = new Literal(nextLiteral, nextValue);
             leftLiteralBranch.add(leftLiteral);
 
             // Set up the parameters for the right branch with the new literal and a true value.
-            rightLiteral = new Literal(nextLiteral, true);
+            rightLiteral = new Literal(nextLiteral, !nextValue);
             rightLiteralBranch.add(rightLiteral);
 
             // Make the recursive call
-            return (DPLL(dynamicClauseArray, leftLiteralBranch) || DPLL(dynamicClauseArray, rightLiteralBranch));
+            return (DPLL( leftLiteralBranch ) || DPLL( rightLiteralBranch ));
         }
     }
 
