@@ -167,8 +167,6 @@ public class Formula {
             leftLiteral = new Literal(nextLiteral, nextValue);
             leftLiteralBranch.add(leftLiteral);
 
-
-
             // Make the recursive calls
             int leftBranch = DPLL( leftLiteralBranch );
 
@@ -247,9 +245,12 @@ public class Formula {
                     // Conflict found.  Exit here to save quite a lot of time on assigning literals.
                     if ( forcedLiterals.contains(oppositeLiteral) ) {
                         numberOfConflicts++;
-                        /*if (clauseList.size() < (numClauses * 2) ) {
-                            return addConflictClause(currentAssignedLiterals, forcedLiteral);
+                        /*if (clauseList.size() < (numClauses + 5) ) {
+                            addConflictClause(currentAssignedLiterals, forcedLiteral);
+                            return 1;
                         }*/
+                        // Returning a 1 here will abort the branch that DLL is currently on, the one that would likely
+                        // result in picking a conflict literal on both subsequent branches.
                         return 1;
                     }
                 }

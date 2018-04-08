@@ -4,7 +4,6 @@ package SimpleSAT;
 // That is, the variables[] array is an integer list of numbered literals
 // Each literal is numbered.  A '-' in front of a literal represents a complimented variable.
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 
