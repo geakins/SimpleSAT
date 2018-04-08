@@ -4,6 +4,8 @@ package SimpleSAT;
 // That is, the variables[] array is an integer list of numbered literals
 // Each literal is numbered.  A '-' in front of a literal represents a complimented variable.
 
+import java.lang.reflect.Array;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 public class Clause {
@@ -101,6 +103,23 @@ public class Clause {
         return false;
     }
 
+    boolean containsLiteral(int literal) {
+        for ( int lit : variables ) {
+            if ( Math.abs(lit) == Math.abs(literal) ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    ArrayList<Integer> getVariables() {
+        ArrayList<Integer> clauseArray = new ArrayList<>(0);
+        for ( int lit : variables ) {
+            clauseArray.add( lit );
+        }
+        return clauseArray;
+    }
+
     private void evaluateSAT() {
         isSAT = false;
         for (int i = 0; i < size; i++) {
@@ -128,5 +147,17 @@ public class Clause {
         output.append (isSAT);
 
         return output.toString();
+    }
+
+    @Override
+    public boolean equals(Object object)
+    {
+        if (object instanceof Clause)
+        {
+            if ((this.variables == ((Clause) object).variables)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

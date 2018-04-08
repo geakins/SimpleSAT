@@ -7,11 +7,15 @@ public class Literal {
     private boolean value;
     // Counts the number of appearances in the formula.
     private int appearances;
+    // If the literal is forced, it is marked as such.
+    private boolean forced;
 
     // The constructor method.  This takes the array of integers in a[] and assigns them to the variables array.
     Literal(final int a) {
         this.literal = a;
         this.value = false;
+        this.appearances = 0;
+        this.forced = false;
     }
 
     Literal(final int a, boolean v) {
@@ -23,6 +27,7 @@ public class Literal {
         literal = literalObject.literal;
         value = literalObject.value;
         appearances = literalObject.appearances;
+        forced = literalObject.forced;
     }
 
     void assign(boolean val) {
@@ -37,12 +42,26 @@ public class Literal {
         literal = lit;
     }
 
+    void setForced () {
+        forced = true;
+    }
+
+    boolean getForced () {
+        return forced;
+    }
+
     void complement () {
         value = !value;
     }
 
     int getLiteral() {
         return literal;
+    }
+
+    int getFullLiteral() {
+        if ( value ) return literal;
+        if ( !value ) return -1*literal;
+        return 0;
     }
 
     boolean getValue() {
