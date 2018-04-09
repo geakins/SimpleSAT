@@ -1,7 +1,6 @@
 package SimpleSAT;
 
 import java.io.FileNotFoundException;
-import java.lang.reflect.Array;
 import java.math.BigInteger;
 import java.util.*;
 import java.io.BufferedInputStream;
@@ -324,7 +323,7 @@ public class Formula {
         }
 
         // Convert the Integer List to an array, the format the Clause object takes.
-        conflictClause = new Clause( IntegerListtoIntArray( conflictClauseBuilder ));
+        conflictClause = new Clause( IntegerListToIntArray( conflictClauseBuilder ));
 
         if ( !clauseList.contains( conflictClause )) {
             clauseList.add(conflictClause);
@@ -336,11 +335,11 @@ public class Formula {
     }
 
     // This function simply converts an Integer List to an int[]
-    private int[] IntegerListtoIntArray(ArrayList<Integer> list)  {
+    private int[] IntegerListToIntArray(ArrayList<Integer> list)  {
         int[] ret = new int[list.size()];
         int i = 0;
         for (Integer e : list)
-            ret[i++] = e.intValue();
+            ret[i++] = e;
         return ret;
     }
 
@@ -408,7 +407,7 @@ public class Formula {
         });
 
         for ( int i = 0; i < listSize; i++ ) {
-            if ( literalList1.get(i) == literalList2.get(i)) {
+            if ( literalList1.get(i).equals(literalList2.get(i) )) {
                 matchTracker++;
             }
             else if (literalList1.get(i) == (-1 * literalList2.get(i))) {
@@ -427,8 +426,7 @@ public class Formula {
                 }
             }
 
-            int newClauseArray[] = IntegerListtoIntArray(newClause);
-            return newClauseArray;
+            return IntegerListToIntArray(newClause);
         }
 
         return null;

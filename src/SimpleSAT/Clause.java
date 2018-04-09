@@ -38,7 +38,7 @@ public class Clause {
             }
         });
 
-        variables = IntegerListtoIntArray( sorterList );
+        variables = IntegerListToIntArray( sorterList );
 
         this.size = a.length;
         this.values = new boolean[a.length];
@@ -155,7 +155,7 @@ public class Clause {
         }
     }
 
-    private int[] IntegerListtoIntArray(ArrayList<Integer> list)  {
+    private int[] IntegerListToIntArray(ArrayList<Integer> list)  {
         int[] ret = new int[list.size()];
         int i = 0;
         for (Integer e : list)
@@ -183,7 +183,6 @@ public class Clause {
     {
         if (object instanceof Clause)
         {
-            boolean equivalent = true;
             if (variables.length != ((Clause) object).variables.length) {
                 return false;
             } else {
@@ -193,6 +192,9 @@ public class Clause {
                     }
                 }
             }
+        }
+        else {
+            return false;
         }
         return true;
     }
