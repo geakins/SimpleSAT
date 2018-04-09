@@ -1,6 +1,7 @@
 package SimpleSAT;
 
 import java.io.FileNotFoundException;
+import java.lang.reflect.Array;
 import java.math.BigInteger;
 import java.util.*;
 import java.io.BufferedInputStream;
@@ -101,6 +102,8 @@ public class Formula {
 
     void solve() {
         ArrayList<Literal> assignedLiterals = new ArrayList<>(1);
+
+        expandClauseList();
 
         DPLL( assignedLiterals );
 
@@ -333,12 +336,102 @@ public class Formula {
     }
 
     // This function simply converts an Integer List to an int[]
-    int[] IntegerListtoIntArray(ArrayList<Integer> list)  {
+    private int[] IntegerListtoIntArray(ArrayList<Integer> list)  {
         int[] ret = new int[list.size()];
         int i = 0;
         for (Integer e : list)
             ret[i++] = e.intValue();
         return ret;
+    }
+
+    private int expandClauseList() {
+        ArrayList<Clause> newClauses = new ArrayList<>(0);
+        ArrayList<Clause> clausesToRemove = new ArrayList<>(0);
+
+        for ( Clause clause1 : clauseList ) {
+            for ( Clause clause2 : clauseList ) {
+                int[] newClause = checkContradiction( clause1, clause2 );
+                if ( newClause != null ) {
+                    if ( !clausesToRemove.contains( clause1 )) {
+                        clausesToRemove.add(clause1);
+                    }
+                    if ( !clausesToRemove.contains( clause2 )) {
+                        clausesToRemove.add(clause2);
+                    }
+                    Clause clauseToAdd = new Clause( newClause );
+                    if ( !newClauses.contains( clauseToAdd )) {
+                        newClauses.add(new Clause(newClause));
+                    }
+                }
+            }
+        }
+
+        Iterator<Clause> iterator;
+
+        for (Clause clauseToRemove : clausesToRemove ) {
+            iterator = clauseList.iterator();
+            while ( iterator.hasNext() ) {
+                if (iterator.next() == clauseToRemove) {
+                    iterator.remove();
+                }
+            }
+        }
+
+        for (Clause clauseToAdd : newClauses ) {
+            clauseList.add( new Clause( clauseToAdd ));
+        }
+
+        return 0;
+    }
+
+    // Checks for two clauses to be equivalent, but with one complemented variable.
+    private int[] checkContradiction( Clause clause1, Clause clause2 ) {
+        if (clause1.getSize() != clause2.getSize()) {
+            return null;
+        }
+
+        int listSize = clause1.getSize();
+        int complementTracker = 0;
+        int complementLiteral = 0;
+        int matchTracker = 0;
+        ArrayList<Integer> literalList1 = clause1.getVariables();
+        ArrayList<Integer> literalList2 = clause2.getVariables();
+        Collections.sort(literalList1, new Comparator<Integer>() {
+            public int compare(Integer o1, Integer o2) {
+                return Integer.compare(Math.abs(o1), Math.abs(o2));
+            }
+        });
+        Collections.sort(literalList2, new Comparator<Integer>() {
+            public int compare(Integer o1, Integer o2) {
+                return Integer.compare(Math.abs(o1), Math.abs(o2));
+            }
+        });
+
+        for ( int i = 0; i < listSize; i++ ) {
+            if ( literalList1.get(i) == literalList2.get(i)) {
+                matchTracker++;
+            }
+            else if (literalList1.get(i) == (-1 * literalList2.get(i))) {
+                complementTracker++;
+                complementLiteral = literalList1.get(i);
+            }
+        }
+
+        if ( complementTracker == 1 && matchTracker == (listSize - 1)) {
+
+            ArrayList<Integer> newClause = new ArrayList<>(0);
+
+            for ( Integer i : literalList1 ) {
+                if ( Math.abs(i) != Math.abs(complementLiteral) ) {
+                    newClause.add( i );
+                }
+            }
+
+            int newClauseArray[] = IntegerListtoIntArray(newClause);
+            return newClauseArray;
+        }
+
+        return null;
     }
 
     // This is a dumb function to pick a new literal to branch on.

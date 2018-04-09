@@ -4,8 +4,11 @@ package SimpleSAT;
 // That is, the variables[] array is an integer list of numbered literals
 // Each literal is numbered.  A '-' in front of a literal represents a complimented variable.
 
+
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 
 public class Clause {
     private int variables[];
@@ -22,6 +25,21 @@ public class Clause {
     // The constructor method.  This takes the array of integers in a[] and assigns them to the variables array.  The length and
     Clause(final int a[]) {
         this.variables = a;
+
+        ArrayList<Integer> sorterList = new ArrayList<>(0);
+
+        for (int x : a ) {
+            sorterList.add( x );
+        }
+
+        Collections.sort(sorterList, new Comparator<Integer>() {
+            public int compare(Integer o1, Integer o2) {
+                return Integer.compare(Math.abs(o1), Math.abs(o2));
+            }
+        });
+
+        variables = IntegerListtoIntArray( sorterList );
+
         this.size = a.length;
         this.values = new boolean[a.length];
         this.assigned = new boolean[a.length];
@@ -119,6 +137,10 @@ public class Clause {
         return clauseArray;
     }
 
+    int getSize() {
+        return size;
+    }
+
     private void evaluateSAT() {
         isSAT = false;
         for (int i = 0; i < size; i++) {
@@ -131,6 +153,14 @@ public class Clause {
                 return;
             }
         }
+    }
+
+    private int[] IntegerListtoIntArray(ArrayList<Integer> list)  {
+        int[] ret = new int[list.size()];
+        int i = 0;
+        for (Integer e : list)
+            ret[i++] = e;
+        return ret;
     }
 
     @Override
@@ -153,10 +183,17 @@ public class Clause {
     {
         if (object instanceof Clause)
         {
-            if ((this.variables == ((Clause) object).variables)) {
-                return true;
+            boolean equivalent = true;
+            if (variables.length != ((Clause) object).variables.length) {
+                return false;
+            } else {
+                for (int i = 0; i < variables.length; i++) {
+                    if (variables[i] != ((Clause) object).variables[i]) {
+                        return false;
+                    }
+                }
             }
         }
-        return false;
+        return true;
     }
 }

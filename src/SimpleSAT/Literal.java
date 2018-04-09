@@ -42,6 +42,10 @@ public class Literal {
         literal = lit;
     }
 
+    void setValue( boolean val ) {
+        value = val;
+    }
+
     void setForced () {
         forced = true;
     }
@@ -60,8 +64,7 @@ public class Literal {
 
     int getFullLiteral() {
         if ( value ) return literal;
-        if ( !value ) return -1*literal;
-        return 0;
+        else return -1*literal;
     }
 
     boolean getValue() {
