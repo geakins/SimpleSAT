@@ -17,6 +17,7 @@ public class Formula {
     private int numVariables, numClauses;
     private long numberOfDecisions;
     private long numberOfConflicts;
+    private long numberOfConflictClauses;
 
     private boolean isFormulaSAT = false;
 
@@ -27,6 +28,8 @@ public class Formula {
         importCNF(fileName);
         formulaSolution = new ArrayList<>(numVariables);
         numberOfDecisions = 0;
+        numberOfConflicts = 0;
+        numberOfConflictClauses = 0;
         randomBoolean = new Random();
     }
 
@@ -186,23 +189,6 @@ public class Formula {
         return 0;
     }
 
-    // This method must be called before each iteration through the DPLL function, since the algorithm uses the
-    // same clause list for all iterations.
-    private void resetClauseListState () {
-        for (Clause clause : clauseList) {
-            clause.resetClause();
-        }
-    }
-
-    // Takes an ArrayList of Literals that have been assigned and makes them official with the clauseList.
-    private void assignLiteralListToClauseList(ArrayList<Literal> currentLiterals) {
-        for (Literal literal : currentLiterals) {
-            for (Clause clause : clauseList) {
-                clause.assign(literal);
-            }
-        }
-    }
-
     // The workhorse method of DPLL.  It takes an ArrayList of Literals that has currently been assigned and searches
     // through the clauseList for unit clauses.  It compiles a List of forced values and searches through those for
     // two things:
@@ -247,10 +233,11 @@ public class Formula {
                     // Conflict found.  Exit here to save quite a lot of time on assigning literals.
                     if ( forcedLiterals.contains(oppositeLiteral) ) {
                         numberOfConflicts++;
-                        /*if (clauseList.size() < (numClauses + 5) ) {
+                        if (clauseList.size() < (numClauses + 5) ) {
+                            // Based on the literal being forced (the conflict literal), generate a conflict clause.
                             addConflictClause(currentAssignedLiterals, forcedLiteral);
                             return 1;
-                        }*/
+                        }
                         // Returning a 1 here will abort the branch that DLL is currently on, the one that would likely
                         // result in picking a conflict literal on both subsequent branches.
                         return 1;
@@ -278,13 +265,16 @@ public class Formula {
         int literalNumber;
         int backtrackLevels = 0;
         ArrayList<Integer> conflictClauseBuilder = new ArrayList<>(0);
-        Clause conflictClause;
         ArrayList<Literal> conflictLiteralList = new ArrayList<>(0);
+        Clause conflictClause;
 
+        // literalNumber stores the literal in the ±x form that is stored in a Clause.
         literalNumber = conflictLiteral.getFullLiteral();
         for ( Clause clause : clauseList ) {
+            // Check each clause in clauseList to see if it contains the conflictLiteral
             if (clause.containsLiteral( literalNumber )) {
                 conflictClauseBuilder = clause.getVariables();
+                // Add
                 for ( int lit : conflictClauseBuilder ) {
                     tempLiteral = new Literal( Math.abs(lit) );
                     if ( lit > 0 ) {
@@ -334,6 +324,23 @@ public class Formula {
         return backtrackLevels;
     }
 
+    // This method must be called before each iteration through the DPLL function, since the algorithm uses the
+    // same clause list for all iterations.
+    private void resetClauseListState () {
+        for (Clause clause : clauseList) {
+            clause.resetClause();
+        }
+    }
+
+    // Takes an ArrayList of Literals that have been assigned and makes them official with the clauseList.
+    private void assignLiteralListToClauseList(ArrayList<Literal> currentLiterals) {
+        for (Literal literal : currentLiterals) {
+            for (Clause clause : clauseList) {
+                clause.assign(literal);
+            }
+        }
+    }
+
     // This function simply converts an Integer List to an int[]
     private int[] IntegerListToIntArray(ArrayList<Integer> list)  {
         int[] ret = new int[list.size()];
@@ -347,10 +354,14 @@ public class Formula {
         ArrayList<Clause> newClauses = new ArrayList<>(0);
         ArrayList<Clause> clausesToRemove = new ArrayList<>(0);
 
+        // These two loops compare every clause to every other clause.
         for ( Clause clause1 : clauseList ) {
             for ( Clause clause2 : clauseList ) {
+                // checkContradiction looks for two clauses that are different by a single variable.  It returns
+                // a contradiction clause that contains only the variables in common.
                 int[] newClause = checkContradiction( clause1, clause2 );
                 if ( newClause != null ) {
+                    // Add to a list of clauses we need to remove.
                     if ( !clausesToRemove.contains( clause1 )) {
                         clausesToRemove.add(clause1);
                     }
@@ -358,6 +369,7 @@ public class Formula {
                         clausesToRemove.add(clause2);
                     }
                     Clause clauseToAdd = new Clause( newClause );
+                    // Add to a list of clauses to add.
                     if ( !newClauses.contains( clauseToAdd )) {
                         newClauses.add(new Clause(newClause));
                     }
@@ -367,6 +379,7 @@ public class Formula {
 
         Iterator<Clause> iterator;
 
+        // Remove clauses from clauseList
         for (Clause clauseToRemove : clausesToRemove ) {
             iterator = clauseList.iterator();
             while ( iterator.hasNext() ) {
@@ -376,6 +389,7 @@ public class Formula {
             }
         }
 
+        // Add new clauses to clauseList
         for (Clause clauseToAdd : newClauses ) {
             clauseList.add( new Clause( clauseToAdd ));
         }
