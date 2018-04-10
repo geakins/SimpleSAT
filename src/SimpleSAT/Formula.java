@@ -550,21 +550,31 @@ public class Formula {
         }
     }
 
-    public void bruteForceSATSolver() {
+    public void bruteForceSolution() {
+        int x = bruteForceSATSolver( clauseList, literalList );
+
+        if ( x == 0 ) {
+            printBruteForceSolution();
+        } else if ( x == -1 ) {
+            System.out.println("No solution!");
+        }
+    }
+
+    private int bruteForceSATSolver(ArrayList<Clause> bruteClauseList, ArrayList<Literal> bruteLiteralList ) {
         int i, j;
         BigInteger totalPossibilities;
 
         totalPossibilities = new BigInteger("2");
-        totalPossibilities = totalPossibilities.pow(numVariables);
+        totalPossibilities = totalPossibilities.pow(bruteLiteralList.size());
 
         System.out.println("Total combinations: " + totalPossibilities.toString());
 
         while (!isFormulaSAT()) {
             incrementLiteralListValues();
-            for (i = 0; i < clauseList.size(); i++) {
-                for (j = 0; j < literalList.size(); j++) {
-                    if (!clauseList.get(i).isSAT()) {
-                        clauseList.get(i).assignBrute(literalList.get(j));
+            for (i = 0; i < bruteClauseList.size(); i++) {
+                for (j = 0; j < bruteLiteralList.size(); j++) {
+                    if (!bruteClauseList.get(i).isSAT()) {
+                        bruteClauseList.get(i).assignBrute(bruteLiteralList.get(j));
                     }
                 }
             }
@@ -572,10 +582,10 @@ public class Formula {
             if (totalPossibilities.equals(BigInteger.ZERO)) break;
         }
         if (isFormulaSAT()) {
-            printBruteForceSolution();
+            return 0;
         }
         else {
-            System.out.println("No solution!");
+            return -1;
         }
     }
 
