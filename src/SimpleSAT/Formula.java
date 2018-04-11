@@ -353,6 +353,7 @@ public class Formula {
     private int expandClauseList() {
         ArrayList<Clause> newClauses = new ArrayList<>(0);
         ArrayList<Clause> clausesToRemove = new ArrayList<>(0);
+        ArrayList<Clause> clausesToCheck = new ArrayList<>(0);
 
         // These two loops compare every clause to every other clause.
         for ( Clause clause1 : clauseList ) {
@@ -399,51 +400,76 @@ public class Formula {
 
     // Checks for two clauses to be equivalent, but with one complemented variable.
     private int[] checkContradiction( Clause clause1, Clause clause2 ) {
+        ArrayList<Integer> literalMatchCounts;
+
+        literalMatchCounts = clauseMatchedLiteralCount( clause1, clause2 );
+
+        if ( literalMatchCounts != null ) {
+            int listSize = clause1.getSize();
+            int literalMatches = literalMatchCounts.get(0);
+            int literalExactMatches = literalMatchCounts.get(1);
+            int literalComplementMatches = literalMatchCounts.get(2);
+            int complementLiteral = literalMatchCounts.get(3);
+            ArrayList<Integer> literalList1 = clause1.getVariables();
+
+            if (literalComplementMatches == 1 && literalExactMatches == (listSize - 1)) {
+
+                ArrayList<Integer> newClause = new ArrayList<>(0);
+
+                for (Integer i : literalList1) {
+                    if (Math.abs(i) != Math.abs(complementLiteral)) {
+                        newClause.add(i);
+                    }
+                }
+
+                return IntegerListToIntArray(newClause);
+            }
+        }
+
+        return null;
+    }
+
+    // Counts the number of literals two clauses have in common, regardless of their sign.
+    private ArrayList<Integer> clauseMatchedLiteralCount( Clause clause1, Clause clause2 ) {
         if (clause1.getSize() != clause2.getSize()) {
             return null;
         }
 
+        ArrayList<Integer> returnCounts = new ArrayList<>(4);
+
         int listSize = clause1.getSize();
+
+        int matchTracker = 0;
+        int perfectMatchTracker = 0;
         int complementTracker = 0;
         int complementLiteral = 0;
-        int matchTracker = 0;
+
         ArrayList<Integer> literalList1 = clause1.getVariables();
         ArrayList<Integer> literalList2 = clause2.getVariables();
-        Collections.sort(literalList1, new Comparator<Integer>() {
-            public int compare(Integer o1, Integer o2) {
-                return Integer.compare(Math.abs(o1), Math.abs(o2));
-            }
-        });
-        Collections.sort(literalList2, new Comparator<Integer>() {
-            public int compare(Integer o1, Integer o2) {
-                return Integer.compare(Math.abs(o1), Math.abs(o2));
-            }
-        });
 
+        int x;
+        int y;
         for ( int i = 0; i < listSize; i++ ) {
-            if ( literalList1.get(i).equals(literalList2.get(i) )) {
+            x = literalList1.get(i);
+            y = literalList2.get(i);
+            if ( Math.abs( x) == Math.abs( y )) {
                 matchTracker++;
             }
-            else if (literalList1.get(i) == (-1 * literalList2.get(i))) {
+            if ( x == y ) {
+                perfectMatchTracker++;
+            }
+            if ( x == -1*y ) {
                 complementTracker++;
-                complementLiteral = literalList1.get(i);
+                complementLiteral = x;
             }
         }
 
-        if ( complementTracker == 1 && matchTracker == (listSize - 1)) {
+        returnCounts.add( matchTracker );
+        returnCounts.add( perfectMatchTracker );
+        returnCounts.add( complementTracker );
+        returnCounts.add( complementLiteral );
 
-            ArrayList<Integer> newClause = new ArrayList<>(0);
-
-            for ( Integer i : literalList1 ) {
-                if ( Math.abs(i) != Math.abs(complementLiteral) ) {
-                    newClause.add( i );
-                }
-            }
-
-            return IntegerListToIntArray(newClause);
-        }
-
-        return null;
+        return returnCounts;
     }
 
     // This is a dumb function to pick a new literal to branch on.
