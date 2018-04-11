@@ -1,6 +1,7 @@
 package SimpleSAT;
 
 import java.io.FileNotFoundException;
+import java.lang.reflect.Array;
 import java.math.BigInteger;
 import java.util.*;
 import java.io.BufferedInputStream;
@@ -354,6 +355,7 @@ public class Formula {
         ArrayList<Clause> newClauses = new ArrayList<>(0);
         ArrayList<Clause> clausesToRemove = new ArrayList<>(0);
         ArrayList<Clause> clausesToCheck = new ArrayList<>(0);
+        ArrayList<ArrayList<Clause>> clauseMatrix = new ArrayList<>(0);
 
         // These two loops compare every clause to every other clause.
         for ( Clause clause1 : clauseList ) {
@@ -364,15 +366,18 @@ public class Formula {
                 if ( newClause != null ) {
                     // Add to a list of clauses we need to remove.
                     if ( !clausesToRemove.contains( clause1 )) {
-                        clausesToRemove.add(clause1);
+                        clausesToRemove.add( clause1 );
                     }
                     if ( !clausesToRemove.contains( clause2 )) {
-                        clausesToRemove.add(clause2);
+                        clausesToRemove.add( clause2 );
                     }
                     Clause clauseToAdd = new Clause( newClause );
                     // Add to a list of clauses to add.
                     if ( !newClauses.contains( clauseToAdd )) {
-                        newClauses.add(new Clause(newClause));
+                        newClauses.add(new Clause( newClause ));
+                    }
+                    if ( newClause[0] == 0 ) {
+                        addClauseToMatrix( clauseMatrix, clause1 );
                     }
                 }
             }
@@ -398,6 +403,22 @@ public class Formula {
         return 0;
     }
 
+    private int addClauseToMatrix(ArrayList<ArrayList<Clause>> clauseMatrix, Clause newClause ) {
+
+        if ( clauseMatrix.isEmpty() ) {
+            ArrayList<Clause> newClauseList = new ArrayList<>(0);
+            newClauseList.add( newClause );
+            clauseMatrix.add( newClauseList );
+        }
+
+        for (ArrayList<Clause> clauseArrayList : clauseMatrix ) {
+            if (clauseArrayList.contains( newClause )) {
+
+            }
+        }
+
+    }
+
     // Checks for two clauses to be equivalent, but with one complemented variable.
     private int[] checkContradiction( Clause clause1, Clause clause2 ) {
         ArrayList<Integer> literalMatchCounts;
@@ -413,9 +434,7 @@ public class Formula {
             ArrayList<Integer> literalList1 = clause1.getVariables();
 
             if (literalComplementMatches == 1 && literalExactMatches == (listSize - 1)) {
-
                 ArrayList<Integer> newClause = new ArrayList<>(0);
-
                 for (Integer i : literalList1) {
                     if (Math.abs(i) != Math.abs(complementLiteral)) {
                         newClause.add(i);
@@ -423,6 +442,10 @@ public class Formula {
                 }
 
                 return IntegerListToIntArray(newClause);
+            }
+            if ( literalExactMatches == listSize ) {
+                int[] exactMatch = new int[]{0};
+                return exactMatch;
             }
         }
 
