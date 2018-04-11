@@ -106,9 +106,14 @@ public class Formula {
     void solve() {
         ArrayList<Literal> assignedLiterals = new ArrayList<>(1);
 
-        expandClauseList();
+        if ( expandClauseList() == -1 ) {
+            System.out.println("No solution found.");
+            System.out.println("Decisions: " + numberOfDecisions);
+            System.out.println("Conflicts: " + numberOfConflicts);
+            return;
+        }
 
-        DPLL( assignedLiterals );
+        DPLL( clauseList, assignedLiterals, literalList );
 
         if (!isFormulaSAT) {
             System.out.println("No solution found.");
@@ -117,20 +122,20 @@ public class Formula {
         }
     }
 
-    private int DPLL (ArrayList<Literal> assignedLiterals) {
+    private int DPLL (ArrayList<Clause> dpllClauseList, ArrayList<Literal> assignedLiterals, ArrayList<Literal> allLiterals) {
         int nextLiteral;
         Literal leftLiteral;
         Literal rightLiteral;
         // Each branch carries its own set of assigned literals
-        ArrayList<Literal> leftLiteralBranch = new ArrayList<>(1);
-        ArrayList<Literal> rightLiteralBranch = new ArrayList<>(1);
+        ArrayList<Literal> leftLiteralBranch = new ArrayList<>();
+        ArrayList<Literal> rightLiteralBranch = new ArrayList<>();
 
         // Before entering each recursion, we need to reset the state of the clause array, since all DPLL calls
         // use the same clauseList;
-        resetClauseListState();
+        resetClauseListState( dpllClauseList );
 
         // Go through the list of clauses and assign values to them.
-        assignLiteralListToClauseList(assignedLiterals);
+        assignLiteralListToClauseList( dpllClauseList, assignedLiterals );
 
         // Exit all recursions if the isFormulaSAT flag is set to true.  This is set when the whole dynamicClauseArray
         // is determined to be satisfied.
@@ -138,7 +143,7 @@ public class Formula {
             return 0;
         }
 
-        int backtrackVariable = updateUnitClauses( assignedLiterals );
+        int backtrackVariable = updateUnitClauses( dpllClauseList, assignedLiterals );
         if ( backtrackVariable > 0 ) {
             return backtrackVariable;
         }
@@ -147,14 +152,14 @@ public class Formula {
         copyDataStructures(assignedLiterals, leftLiteralBranch, rightLiteralBranch);
 
         // Pick a new literal to branch on.  Returns -1 if no literals are left.
-        nextLiteral = pickLiteral( assignedLiterals );
+        nextLiteral = pickLiteral( assignedLiterals, allLiterals );
 
         // Keep track of how many decisions we make in the algorithm.  This is a decent metric of algorithm efficiency.
         numberOfDecisions++;
 
         // Check to see if the formula is SAT based on the current clause list.
         // Print solution and return if solution is found.
-        if (isFormulaSAT(clauseList)) {
+        if (isFormulaSAT( dpllClauseList )) {
             isFormulaSAT = true;
             formulaSolution = new ArrayList<>(assignedLiterals);
             System.out.println("Solution found");
@@ -174,7 +179,7 @@ public class Formula {
             leftLiteralBranch.add(leftLiteral);
 
             // Make the recursive calls
-            int leftBranch = DPLL( leftLiteralBranch );
+            int leftBranch = DPLL( dpllClauseList, leftLiteralBranch, allLiterals );
 
             /*if ( leftBranch > 0 ) {
                 return leftBranch - 1;
@@ -183,7 +188,7 @@ public class Formula {
             // Set up the parameters for the right branch with the new literal and a true value.
             rightLiteral = new Literal(nextLiteral, !nextValue);
             rightLiteralBranch.add(rightLiteral);
-            int rightBranch = DPLL( rightLiteralBranch );
+            int rightBranch = DPLL( dpllClauseList, rightLiteralBranch, allLiterals );
 
 
         }
@@ -197,7 +202,7 @@ public class Formula {
     // 2. A conflict
     // If forced values are found, they are assigned to the clause and the search starts again.
     // If a conflict is found, -1 is returned.
-    private int updateUnitClauses(ArrayList<Literal> currentAssignedLiterals) {
+    private int updateUnitClauses(ArrayList<Clause> dpllClauseList, ArrayList<Literal> currentAssignedLiterals) {
         int forcedVariable;
         int numberForced = 1;
         boolean forcedValue;
@@ -213,7 +218,7 @@ public class Formula {
             forcedLiterals.clear();
             removedLiterals.clear();
             numberForced = 0;
-            for (Clause clause : clauseList) {
+            for (Clause clause : dpllClauseList) {
                 // findImplications() returns the unassigned literal in unit clauses, or 0 otherwise.
                 forcedVariable = clause.findImplications();
                 if (forcedVariable != 0) {
@@ -234,9 +239,9 @@ public class Formula {
                     // Conflict found.  Exit here to save quite a lot of time on assigning literals.
                     if ( forcedLiterals.contains(oppositeLiteral) ) {
                         numberOfConflicts++;
-                        if (clauseList.size() < (numClauses + 5) ) {
+                        if (dpllClauseList.size() < (numClauses + 5) ) {
                             // Based on the literal being forced (the conflict literal), generate a conflict clause.
-                            addConflictClause(currentAssignedLiterals, forcedLiteral);
+                            addConflictClause(dpllClauseList, currentAssignedLiterals, forcedLiteral);
                             return 1;
                         }
                         // Returning a 1 here will abort the branch that DLL is currently on, the one that would likely
@@ -249,7 +254,7 @@ public class Formula {
             // Apply all found forced literals to the formula.
             for ( Literal literal : forcedLiterals ) {
                 if (literal.getLiteral() != 0 && !removedLiterals.contains(literal)) {
-                    assignLiteralToClauses(clauseList, literal);
+                    assignLiteralToClauses(dpllClauseList, literal);
                     currentAssignedLiterals.add(new Literal(literal));
                     removedLiterals.add(literal);
                     numberForced++;
@@ -261,7 +266,7 @@ public class Formula {
 
     // addConflictClause attempts to calculate a clause to add to the clauseList to earlier find conflicts and
     // terminate unsat branches sooner.
-    private int addConflictClause(ArrayList<Literal> assignedLiterals, Literal conflictLiteral ) {
+    private int addConflictClause(ArrayList<Clause> dpllClauseList, ArrayList<Literal> assignedLiterals, Literal conflictLiteral ) {
         Literal tempLiteral;
         int literalNumber;
         int backtrackLevels = 0;
@@ -271,8 +276,8 @@ public class Formula {
 
         // literalNumber stores the literal in the ±x form that is stored in a Clause.
         literalNumber = conflictLiteral.getFullLiteral();
-        for ( Clause clause : clauseList ) {
-            // Check each clause in clauseList to see if it contains the conflictLiteral
+        for ( Clause clause : dpllClauseList ) {
+            // Check each clause in dpllClauseList to see if it contains the conflictLiteral
             if (clause.containsLiteral( literalNumber )) {
                 conflictClauseBuilder = clause.getVariables();
                 // Add
@@ -316,8 +321,8 @@ public class Formula {
         // Convert the Integer List to an array, the format the Clause object takes.
         conflictClause = new Clause( IntegerListToIntArray( conflictClauseBuilder ));
 
-        if ( !clauseList.contains( conflictClause )) {
-            clauseList.add(conflictClause);
+        if ( !dpllClauseList.contains( conflictClause )) {
+            dpllClauseList.add(conflictClause);
         }
 
         backtrackLevels -= 2;
@@ -327,16 +332,16 @@ public class Formula {
 
     // This method must be called before each iteration through the DPLL function, since the algorithm uses the
     // same clause list for all iterations.
-    private void resetClauseListState () {
-        for (Clause clause : clauseList) {
+    private void resetClauseListState ( ArrayList<Clause> dpllClauseList ) {
+        for (Clause clause : dpllClauseList) {
             clause.resetClause();
         }
     }
 
     // Takes an ArrayList of Literals that have been assigned and makes them official with the clauseList.
-    private void assignLiteralListToClauseList(ArrayList<Literal> currentLiterals) {
+    private void assignLiteralListToClauseList(ArrayList<Clause> dpllClauseList, ArrayList<Literal> currentLiterals) {
         for (Literal literal : currentLiterals) {
-            for (Clause clause : clauseList) {
+            for (Clause clause : dpllClauseList) {
                 clause.assign(literal);
             }
         }
@@ -359,26 +364,41 @@ public class Formula {
 
         // These two loops compare every clause to every other clause.
         for ( Clause clause1 : clauseList ) {
+            ArrayList<Clause> dpllClauseSublist = new ArrayList<>();
             for ( Clause clause2 : clauseList ) {
                 // checkContradiction looks for two clauses that are different by a single variable.  It returns
                 // a contradiction clause that contains only the variables in common.
                 int[] newClause = checkContradiction( clause1, clause2 );
-                if ( newClause != null ) {
-                    // Add to a list of clauses we need to remove.
-                    if ( !clausesToRemove.contains( clause1 )) {
-                        clausesToRemove.add( clause1 );
+
+                if ( newClause != null) {
+                    if ( newClause[0] != 0 ) {
+                        // Add to a list of clauses we need to remove.
+                        if (!clausesToRemove.contains(clause1)) {
+                            clausesToRemove.add( clause1 );
+                        }
+                        if (!clausesToRemove.contains(clause2)) {
+                            clausesToRemove.add( clause2 );
+                        }
+                        Clause clauseToAdd = new Clause( newClause );
+                        // Add to a list of clauses to add.
+                        if (!newClauses.contains(clauseToAdd)) {
+                            newClauses.add(new Clause( newClause ));
+                        }
                     }
-                    if ( !clausesToRemove.contains( clause2 )) {
-                        clausesToRemove.add( clause2 );
+
+                    if (clauseMatchedLiterals(clause1, clause2) == clause1.getSize()) {
+                        dpllClauseSublist.add( clause2 );
                     }
-                    Clause clauseToAdd = new Clause( newClause );
-                    // Add to a list of clauses to add.
-                    if ( !newClauses.contains( clauseToAdd )) {
-                        newClauses.add(new Clause( newClause ));
-                    }
-                    if ( newClause[0] == 0 ) {
-                        addClauseToMatrix( clauseMatrix, clause1 );
-                    }
+
+                }
+            }
+            if ( dpllClauseSublist.size() > 2 ) {
+                ArrayList<Literal> dpllLiteralList = clause1.getLiterals();
+                DPLL( dpllClauseSublist, dpllLiteralList, dpllLiteralList );
+                if (!isFormulaSAT) {
+                    return -1;
+                } else {
+                    isFormulaSAT = false;
                 }
             }
         }
@@ -401,22 +421,6 @@ public class Formula {
         }
 
         return 0;
-    }
-
-    private int addClauseToMatrix(ArrayList<ArrayList<Clause>> clauseMatrix, Clause newClause ) {
-
-        if ( clauseMatrix.isEmpty() ) {
-            ArrayList<Clause> newClauseList = new ArrayList<>(0);
-            newClauseList.add( newClause );
-            clauseMatrix.add( newClauseList );
-        }
-
-        for (ArrayList<Clause> clauseArrayList : clauseMatrix ) {
-            if (clauseArrayList.contains( newClause )) {
-
-            }
-        }
-
     }
 
     // Checks for two clauses to be equivalent, but with one complemented variable.
@@ -443,13 +447,11 @@ public class Formula {
 
                 return IntegerListToIntArray(newClause);
             }
-            if ( literalExactMatches == listSize ) {
-                int[] exactMatch = new int[]{0};
-                return exactMatch;
-            }
         }
+        else return null;
 
-        return null;
+        int[] exactMatch = new int[]{0};
+        return exactMatch;
     }
 
     // Counts the number of literals two clauses have in common, regardless of their sign.
@@ -495,14 +497,40 @@ public class Formula {
         return returnCounts;
     }
 
+    // Counts the number of literals two clauses have in common, regardless of their sign.
+    private int clauseMatchedLiterals( Clause clause1, Clause clause2 ) {
+        if (clause1.getSize() != clause2.getSize()) {
+            return -1;
+        }
+
+        int listSize = clause1.getSize();
+
+        int matchTracker = 0;
+
+        ArrayList<Integer> literalList1 = clause1.getVariables();
+        ArrayList<Integer> literalList2 = clause2.getVariables();
+
+        int x;
+        int y;
+        for ( int i = 0; i < listSize; i++ ) {
+            x = Math.abs( literalList1.get(i) );
+            y = Math.abs( literalList2.get(i) );
+            if ( x == y ) {
+                matchTracker++;
+            }
+        }
+
+        return matchTracker;
+    }
+
     // This is a dumb function to pick a new literal to branch on.
     // assignedLiterals is an ArrayList of literals that have already been picked.
     // pickLiteral simply picks a value that has not been picked.
     // If all literals have been picked, it returns -1.
-    private int pickLiteral(ArrayList<Literal> assignedLiterals) {
+    private int pickLiteral(ArrayList<Literal> assignedLiterals, ArrayList<Literal> allLiterals) {
         Literal oppositeLiteral;
-        for (Literal literal : literalList) {
-            oppositeLiteral = new Literal(literal);
+        for ( Literal literal : allLiterals ) {
+            oppositeLiteral = new Literal( literal );
             oppositeLiteral.complement();
             if (!assignedLiterals.contains(literal) && !assignedLiterals.contains(oppositeLiteral)) {
                 return literal.getLiteral();

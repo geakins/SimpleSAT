@@ -112,8 +112,8 @@ public class Clause {
     }
 
     boolean literalExists(Literal literal) {
-        for (int i = 0; i < variables.length; i++) {
-            if (Math.abs(literal.getLiteral()) == variables[i]) {
+        for (int i : variables ) {
+            if (Math.abs(literal.getLiteral()) == i) {
                 return true;
             }
         }
@@ -135,6 +135,15 @@ public class Clause {
             clauseArray.add( lit );
         }
         return clauseArray;
+    }
+
+    ArrayList<Literal> getLiterals() {
+        ArrayList<Literal> literalList = new ArrayList<>();
+        for (int lit : variables ) {
+            Literal newLit = new Literal( lit );
+            literalList.add( newLit );
+        }
+        return literalList;
     }
 
     int getSize() {
