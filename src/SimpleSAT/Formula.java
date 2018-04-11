@@ -356,6 +356,10 @@ public class Formula {
         return ret;
     }
 
+    // This method has two functions.  It first looks for clauses that contain all the same literals and adds them
+    // to a sub-list of clauses to run DPLL on.  If the result is unsat, the whole formula is unsat.
+    // The second function is to reduce the clause list.  Clauses in the form (x + y + z)(x + y + z') will be
+    // expanded to (x + y)
     private int expandClauseList() {
         ArrayList<Clause> newClauses = new ArrayList<>(0);
         ArrayList<Clause> clausesToRemove = new ArrayList<>(0);
