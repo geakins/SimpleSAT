@@ -182,7 +182,8 @@ public class Clause {
             output.append(delimiter);
         }
 
-        output.append (isSAT);
+        // Uncomment to see the status of each clause.
+        // output.append (isSAT);
 
         return output.toString();
     }

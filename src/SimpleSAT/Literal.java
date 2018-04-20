@@ -83,7 +83,8 @@ public class Literal {
     @Override
     public String toString() {
         String output;
-        output = literal + " " + Boolean.toString(value);
+        // Uncomment the end of this line to add the value to the Literal output
+        output = literal + " "; // + " " + Boolean.toString(value);
         return output;
     }
 

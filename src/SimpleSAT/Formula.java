@@ -107,7 +107,7 @@ public class Formula {
         ArrayList<Literal> assignedLiterals = new ArrayList<>(1);
 
         if ( expandClauseList() == -1 ) {
-            System.out.println("No solution found.");
+            System.out.println("RESULT: UNSAT");
             System.out.println("Decisions: " + numberOfDecisions);
             System.out.println("Conflicts: " + numberOfConflicts);
             return;
@@ -116,7 +116,7 @@ public class Formula {
         DPLL( clauseList, assignedLiterals, literalList );
 
         if (!isFormulaSAT) {
-            System.out.println("No solution found.");
+            System.out.println("RESULT: UNSAT");
             System.out.println("Decisions: " + numberOfDecisions);
             System.out.println("Conflicts: " + numberOfConflicts);
         }
@@ -162,7 +162,6 @@ public class Formula {
         if (isFormulaSAT( dpllClauseList )) {
             isFormulaSAT = true;
             formulaSolution = new ArrayList<>(assignedLiterals);
-            System.out.println("Solution found");
             printFormulaSolution();
             return 0;
         }
@@ -363,8 +362,6 @@ public class Formula {
     private int expandClauseList() {
         ArrayList<Clause> newClauses = new ArrayList<>(0);
         ArrayList<Clause> clausesToRemove = new ArrayList<>(0);
-        ArrayList<Clause> clausesToCheck = new ArrayList<>(0);
-        ArrayList<ArrayList<Clause>> clauseMatrix = new ArrayList<>(0);
 
         // These two loops compare every clause to every other clause.
         for ( Clause clause1 : clauseList ) {
@@ -454,8 +451,8 @@ public class Formula {
         }
         else return null;
 
-        int[] exactMatch = new int[]{0};
-        return exactMatch;
+        int[] nothingSpecial = new int[]{0};
+        return nothingSpecial;
     }
 
     // Counts the number of literals two clauses have in common, regardless of their sign.
@@ -587,14 +584,21 @@ public class Formula {
     private void printFormulaSolution() {
         StringBuilder output = new StringBuilder(numVariables);
         int finalLiteral;
+        int finalValue;
+
+        output.append("RESULT: SAT \n");
+        output.append("ASSIGNMENT: ");
 
         for (Literal literal : formulaSolution) {
             finalLiteral = literal.getLiteral();
+            finalValue = 0;
             // if the value assigned to a literal is negative, complement the value before outputting.
             if (!literal.getValue()) {
-                finalLiteral *= -1;
+                finalValue = 1;
             }
             output.append(finalLiteral);
+            output.append("=");
+            output.append(finalValue);
             output.append(" ");
         }
 
