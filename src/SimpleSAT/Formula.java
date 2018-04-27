@@ -1,12 +1,12 @@
 package SimpleSAT;
 
 import java.io.FileNotFoundException;
-import java.lang.reflect.Array;
 import java.math.BigInteger;
 import java.util.*;
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
 
+import static java.lang.Integer.MAX_VALUE;
 import static java.lang.Math.abs;
 
 public class Formula {
@@ -14,6 +14,7 @@ public class Formula {
     private ArrayList<Literal> literalList;
     private ArrayList<Clause> clauseList;
     private ArrayList<Literal> formulaSolution;
+    private ArrayList<Integer> backtrackedLiterals;
 
     private int numVariables, numClauses;
     private long numberOfDecisions;
@@ -28,6 +29,7 @@ public class Formula {
     Formula(final String fileName) {
         importCNF(fileName);
         formulaSolution = new ArrayList<>(numVariables);
+        backtrackedLiterals = new ArrayList<>(0);
         numberOfDecisions = 0;
         numberOfConflicts = 0;
         numberOfConflictClauses = 0;
@@ -106,19 +108,23 @@ public class Formula {
     void solve() {
         ArrayList<Literal> assignedLiterals = new ArrayList<>(1);
 
-        if ( expandClauseList() == -1 ) {
+        /*if ( expandClauseList() == -1 ) {
             System.out.println("RESULT: UNSAT");
             System.out.println("Decisions: " + numberOfDecisions);
             System.out.println("Conflicts: " + numberOfConflicts);
             return;
-        }
+        }*/
 
         DPLL( clauseList, assignedLiterals, literalList );
 
         if (!isFormulaSAT) {
+            for (Clause clause : clauseList ) {
+                System.out.println( clause );
+            }
             System.out.println("RESULT: UNSAT");
             System.out.println("Decisions: " + numberOfDecisions);
             System.out.println("Conflicts: " + numberOfConflicts);
+
         }
     }
 
@@ -143,9 +149,9 @@ public class Formula {
             return 0;
         }
 
-        int backtrackVariable = updateUnitClauses( dpllClauseList, assignedLiterals );
-        if ( backtrackVariable > 0 ) {
-            return backtrackVariable;
+        int backtrackLiteral = updateUnitClauses( dpllClauseList, assignedLiterals );
+        if ( backtrackLiteral > 0 || backtrackLiteral == -2 ) {
+            return backtrackLiteral;
         }
 
         // Copy the Literal data structures to new structures to pass to the next iteration of DPLL.
@@ -172,18 +178,22 @@ public class Formula {
         } else {
             // If nextLiteral is not -1, then a literal has been picked.  Process it.
             // Set up the parameters for the left branch with the new literal and a false value.
-            boolean nextValue = randomBoolean.nextBoolean();
+            //boolean nextValue = randomBoolean.nextBoolean();
+
+            boolean nextValue = false;
 
             leftLiteral = new Literal(nextLiteral, nextValue);
             leftLiteralBranch.add(leftLiteral);
 
             // Make the recursive calls
+            //System.out.println("Left on " + nextLiteral);
             int leftBranch = DPLL( dpllClauseList, leftLiteralBranch, allLiterals );
 
-            /*if ( leftBranch > 0 ) {
-                return leftBranch - 1;
-            }*/
+            if ( leftBranch > 0 && leftBranch != nextLiteral ) {
+                return leftBranch;
+            }
 
+            //System.out.println("Right on " + nextLiteral );
             // Set up the parameters for the right branch with the new literal and a true value.
             rightLiteral = new Literal(nextLiteral, !nextValue);
             rightLiteralBranch.add(rightLiteral);
@@ -238,14 +248,15 @@ public class Formula {
                     // Conflict found.  Exit here to save quite a lot of time on assigning literals.
                     if ( forcedLiterals.contains(oppositeLiteral) ) {
                         numberOfConflicts++;
-                        if (dpllClauseList.size() < (numClauses + 5) ) {
+                        //System.out.println("Conflict");
+                        if (dpllClauseList.size() < (numClauses + 10) ) {
                             // Based on the literal being forced (the conflict literal), generate a conflict clause.
-                            addConflictClause(dpllClauseList, currentAssignedLiterals, forcedLiteral);
-                            return 1;
+                            //return addConflictClause(dpllClauseList, currentAssignedLiterals, forcedLiteral);
+                            return -2;
                         }
-                        // Returning a 1 here will abort the branch that DLL is currently on, the one that would likely
-                        // result in picking a conflict literal on both subsequent branches.
-                        return 1;
+                        // Returning a -2 indicated that DPLL should abort the current branch that it is on, but the
+                        // maximum number of conflict clauses has been reached.
+                        return -2;
                     }
                 }
             }
@@ -253,6 +264,7 @@ public class Formula {
             // Apply all found forced literals to the formula.
             for ( Literal literal : forcedLiterals ) {
                 if (literal.getLiteral() != 0 && !removedLiterals.contains(literal)) {
+                    literal.setForced();
                     assignLiteralToClauses(dpllClauseList, literal);
                     currentAssignedLiterals.add(new Literal(literal));
                     removedLiterals.add(literal);
@@ -268,25 +280,30 @@ public class Formula {
     private int addConflictClause(ArrayList<Clause> dpllClauseList, ArrayList<Literal> assignedLiterals, Literal conflictLiteral ) {
         Literal tempLiteral;
         int literalNumber;
-        int backtrackLevels = 0;
+        int backtrackLiteral = MAX_VALUE;
         ArrayList<Integer> conflictClauseBuilder = new ArrayList<>(0);
         ArrayList<Literal> conflictLiteralList = new ArrayList<>(0);
         Clause conflictClause;
 
         // literalNumber stores the literal in the ±x form that is stored in a Clause.
         literalNumber = conflictLiteral.getFullLiteral();
+        // This loop builds up a list of literals that are in the same clauses as the conflict literal.
         for ( Clause clause : dpllClauseList ) {
             // Check each clause in dpllClauseList to see if it contains the conflictLiteral
-            if (clause.containsLiteral( literalNumber )) {
+            if ( clause.containsLiteral( literalNumber )) {
                 conflictClauseBuilder = clause.getVariables();
-                // Add
                 for ( int lit : conflictClauseBuilder ) {
                     tempLiteral = new Literal( Math.abs(lit) );
                     if ( lit > 0 ) {
                         tempLiteral.complement();
                     }
-                    if (!conflictLiteralList.contains( tempLiteral )) {
+                    if (!conflictLiteralList.contains( tempLiteral ) && assignedLiterals.contains( tempLiteral )) {
                         conflictLiteralList.add( tempLiteral );
+                        if ( assignedLiterals.indexOf( tempLiteral ) < backtrackLiteral && !backtrackedLiterals.contains(backtrackLiteral)) {
+                            if ( !assignedLiterals.get(assignedLiterals.indexOf( tempLiteral )).isForced() ) {
+                                backtrackLiteral = assignedLiterals.indexOf( tempLiteral );
+                            }
+                        }
                     }
 
                 }
@@ -294,40 +311,42 @@ public class Formula {
         }
 
         conflictClauseBuilder.clear();
+        // Build conflict clause
         for ( Literal conflictLit : conflictLiteralList ) {
-            for (Literal assLit : assignedLiterals ) {
-                if ( conflictLit.getLiteral() == assLit.getLiteral() ) {
-                    int tempLit = conflictLit.getLiteral();
-                    if ( backtrackLevels == 0 ) {
-                        for (int i = assignedLiterals.indexOf( assLit ); i < assignedLiterals.size(); i++ ) {
-                            if ( !assignedLiterals.get(i).getForced() ) {
-                                backtrackLevels++;
-                            }
-                            //backtrackLevels = assignedLiterals.size() - assignedLiterals.indexOf(assLit);
-                        }
-                    }
-                    // Add the opposite literal of what the assigned value is.
-                    if ( assLit.getValue() ) {
-                        tempLit *= -1;
-                    }
-                    if ( !conflictClauseBuilder.contains( tempLit ) ) {
-                        conflictClauseBuilder.add(tempLit);
-                    }
-                }
+            int tempLit = conflictLit.getLiteral();
+
+            // Add the opposite literal of what the assigned value is.
+            if ( conflictLit.getValue() ) {
+                tempLit *= -1;
+            }
+            if ( !conflictClauseBuilder.contains( tempLit ) ) {
+                conflictClauseBuilder.add(tempLit);
             }
         }
 
+
+        if ( backtrackLiteral > assignedLiterals.size() ) {
+        return -2;
+    } else {
+        backtrackLiteral = assignedLiterals.get(backtrackLiteral).getLiteral();
+    }
+
+
+
+
+        backtrackedLiterals.add(backtrackLiteral);
         // Convert the Integer List to an array, the format the Clause object takes.
         conflictClause = new Clause( IntegerListToIntArray( conflictClauseBuilder ));
-
+        System.out.println(conflictClause);
+        System.out.println(backtrackLiteral);
         if ( !dpllClauseList.contains( conflictClause )) {
             dpllClauseList.add(conflictClause);
         }
 
-        backtrackLevels -= 2;
 
-        return backtrackLevels;
-    }
+
+        return backtrackLiteral;
+}
 
     // This method must be called before each iteration through the DPLL function, since the algorithm uses the
     // same clause list for all iterations.
@@ -592,8 +611,8 @@ public class Formula {
         for (Literal literal : formulaSolution) {
             finalLiteral = literal.getLiteral();
             finalValue = 0;
-            // if the value assigned to a literal is negative, complement the value before outputting.
-            if (!literal.getValue()) {
+            // if the value assigned to a literal is true, assign value of 1.
+            if (literal.getValue()) {
                 finalValue = 1;
             }
             output.append(finalLiteral);

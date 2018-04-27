@@ -46,10 +46,6 @@ public class Literal {
         value = val;
     }
 
-    void setForced () {
-        forced = true;
-    }
-
     boolean getForced () {
         return forced;
     }
@@ -70,6 +66,12 @@ public class Literal {
     boolean getValue() {
         return value;
     }
+
+    void setForced () {
+        forced = true;
+    }
+
+    boolean isForced() {return forced; }
 
     int getAppearances() {
         return appearances;
