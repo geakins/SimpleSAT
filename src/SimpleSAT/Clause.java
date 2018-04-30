@@ -21,6 +21,7 @@ public class Clause {
     private boolean isSAT;
     // Counts the number of literals unassigned.  Clause is unit when this reaches 1.
     private int numberUnassigned;
+    private boolean isConflictClause;
 
     // The constructor method.  This takes the array of integers in a[] and assigns them to the variables array.  The length and
     Clause(final int a[]) {
@@ -44,6 +45,7 @@ public class Clause {
         this.values = new boolean[a.length];
         this.assigned = new boolean[a.length];
         this.numberUnassigned = a.length;
+        this.isConflictClause = false;
         Arrays.fill(this.values, false);
         Arrays.fill(this.assigned, false);
     }
@@ -61,6 +63,7 @@ public class Clause {
         }
         numberUnassigned = clause.numberUnassigned;
         isSAT = clause.isSAT;
+        isConflictClause = clause.isConflictClause;
     }
 
     boolean isSAT() {
@@ -140,7 +143,7 @@ public class Clause {
     ArrayList<Literal> getLiterals() {
         ArrayList<Literal> literalList = new ArrayList<>();
         for (int lit : variables ) {
-            Literal newLit = new Literal( lit );
+            Literal newLit = new Literal( Math.abs(lit) );
             literalList.add( newLit );
         }
         return literalList;
@@ -148,6 +151,13 @@ public class Clause {
 
     int getSize() {
         return size;
+    }
+
+    void setConflictClause() {
+        isConflictClause = true;
+    }
+    boolean isConflictClause() {
+        return isConflictClause;
     }
 
     private void evaluateSAT() {

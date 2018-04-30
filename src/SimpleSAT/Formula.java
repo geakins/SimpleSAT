@@ -14,7 +14,9 @@ public class Formula {
     private ArrayList<Literal> literalList;
     private ArrayList<Clause> clauseList;
     private ArrayList<Literal> formulaSolution;
-    private ArrayList<Integer> backtrackedLiterals;
+    private ArrayList<Integer> conflictLiterals;
+    private ArrayList<Integer> backtrackLiterals;
+
 
     private int numVariables, numClauses;
     private long numberOfDecisions;
@@ -29,7 +31,8 @@ public class Formula {
     Formula(final String fileName) {
         importCNF(fileName);
         formulaSolution = new ArrayList<>(numVariables);
-        backtrackedLiterals = new ArrayList<>(0);
+        conflictLiterals = new ArrayList<>(0);
+        backtrackLiterals = new ArrayList<>(0);
         numberOfDecisions = 0;
         numberOfConflicts = 0;
         numberOfConflictClauses = 0;
@@ -108,23 +111,23 @@ public class Formula {
     void solve() {
         ArrayList<Literal> assignedLiterals = new ArrayList<>(1);
 
-        /*if ( expandClauseList() == -1 ) {
+        if ( expandClauseList() == -1 ) {
             System.out.println("RESULT: UNSAT");
             System.out.println("Decisions: " + numberOfDecisions);
             System.out.println("Conflicts: " + numberOfConflicts);
             return;
-        }*/
+        }
 
         DPLL( clauseList, assignedLiterals, literalList );
 
         if (!isFormulaSAT) {
-            for (Clause clause : clauseList ) {
-                System.out.println( clause );
-            }
             System.out.println("RESULT: UNSAT");
             System.out.println("Decisions: " + numberOfDecisions);
             System.out.println("Conflicts: " + numberOfConflicts);
-
+        }
+        else {
+            //formulaSolution = new ArrayList<>(assignedLiterals);
+            printFormulaSolution();
         }
     }
 
@@ -167,8 +170,7 @@ public class Formula {
         // Print solution and return if solution is found.
         if (isFormulaSAT( dpllClauseList )) {
             isFormulaSAT = true;
-            formulaSolution = new ArrayList<>(assignedLiterals);
-            printFormulaSolution();
+            recordFormulaSolution(assignedLiterals);
             return 0;
         }
 
@@ -249,14 +251,26 @@ public class Formula {
                     if ( forcedLiterals.contains(oppositeLiteral) ) {
                         numberOfConflicts++;
                         //System.out.println("Conflict");
-                        if (dpllClauseList.size() < (numClauses + 10) ) {
+                        if (dpllClauseList.size() < ( numClauses * 2) ) {
+                            if (conflictLiterals.contains( forcedLiteral.getLiteral() )) {
+                                return -2;
+                            }
                             // Based on the literal being forced (the conflict literal), generate a conflict clause.
-                            //return addConflictClause(dpllClauseList, currentAssignedLiterals, forcedLiteral);
-                            return -2;
+                            int x = addConflictClause(dpllClauseList, currentAssignedLiterals, forcedLiteral);
+                            conflictLiterals.add( forcedLiteral.getLiteral() );
+                            if (backtrackLiterals.contains( x )) {
+                                break;
+                            }
+
+                            backtrackLiterals.add( x );
+
+                            if ( x > 0 || x == -2 ) return x;
+                            else break;
                         }
+                        return -2;
                         // Returning a -2 indicated that DPLL should abort the current branch that it is on, but the
                         // maximum number of conflict clauses has been reached.
-                        return -2;
+                        //return -2;
                     }
                 }
             }
@@ -289,6 +303,7 @@ public class Formula {
         literalNumber = conflictLiteral.getFullLiteral();
         // This loop builds up a list of literals that are in the same clauses as the conflict literal.
         for ( Clause clause : dpllClauseList ) {
+            if ( clause.isConflictClause() ) break;
             // Check each clause in dpllClauseList to see if it contains the conflictLiteral
             if ( clause.containsLiteral( literalNumber )) {
                 conflictClauseBuilder = clause.getVariables();
@@ -299,7 +314,7 @@ public class Formula {
                     }
                     if (!conflictLiteralList.contains( tempLiteral ) && assignedLiterals.contains( tempLiteral )) {
                         conflictLiteralList.add( tempLiteral );
-                        if ( assignedLiterals.indexOf( tempLiteral ) < backtrackLiteral && !backtrackedLiterals.contains(backtrackLiteral)) {
+                        if ( assignedLiterals.indexOf( tempLiteral ) < backtrackLiteral ) {
                             if ( !assignedLiterals.get(assignedLiterals.indexOf( tempLiteral )).isForced() ) {
                                 backtrackLiteral = assignedLiterals.indexOf( tempLiteral );
                             }
@@ -324,26 +339,28 @@ public class Formula {
             }
         }
 
-
         if ( backtrackLiteral > assignedLiterals.size() ) {
-        return -2;
-    } else {
-        backtrackLiteral = assignedLiterals.get(backtrackLiteral).getLiteral();
-    }
+            return -2;
+        } else {
+            backtrackLiteral = assignedLiterals.get(backtrackLiteral).getLiteral();
+        }
 
-
-
-
-        backtrackedLiterals.add(backtrackLiteral);
+        //backtrackedLiterals.add(backtrackLiteral);
         // Convert the Integer List to an array, the format the Clause object takes.
         conflictClause = new Clause( IntegerListToIntArray( conflictClauseBuilder ));
+        conflictClause.setConflictClause();
+
+        if (conflictClause.getSize() < 3 ) {
+            return -2;
+        }
+        else if ( conflictClause.getSize() > 6 ) {
+            return -2;
+        }
         System.out.println(conflictClause);
         System.out.println(backtrackLiteral);
         if ( !dpllClauseList.contains( conflictClause )) {
-            dpllClauseList.add(conflictClause);
+            //dpllClauseList.add(conflictClause);
         }
-
-
 
         return backtrackLiteral;
 }
@@ -413,8 +430,10 @@ public class Formula {
                 }
             }
             if ( dpllClauseSublist.size() > 2 ) {
+                ArrayList<Literal> assignedLiterals = new ArrayList<>(1);
                 ArrayList<Literal> dpllLiteralList = clause1.getLiterals();
-                DPLL( dpllClauseSublist, dpllLiteralList, dpllLiteralList );
+
+                DPLL( dpllClauseSublist, assignedLiterals, dpllLiteralList );
                 if (!isFormulaSAT) {
                     return -1;
                 } else {
@@ -439,6 +458,8 @@ public class Formula {
         for (Clause clauseToAdd : newClauses ) {
             clauseList.add( new Clause( clauseToAdd ));
         }
+
+        numClauses = clauseList.size();
 
         return 0;
     }
@@ -626,6 +647,17 @@ public class Formula {
         System.out.println("Conflicts: " + numberOfConflicts);
     }
 
+    private void recordFormulaSolution( ArrayList<Literal> assignedLiterals ) {
+        for ( Literal lit : assignedLiterals ) {
+            if ( lit.getValue() ) {
+                lit.complement();
+                int index = literalList.indexOf( lit );
+                literalList.get( index ).complement();
+            }
+        }
+        formulaSolution = literalList;
+    }
+
     private void copyDataStructures(ArrayList<Literal> assignedLiterals, ArrayList<Literal> leftLiteralBranch, ArrayList<Literal> rightLiteralBranch) {
         // Copy the assigned literals to two new lists that will be used in the recursive calls
         for (Literal literal : assignedLiterals) {
@@ -635,7 +667,7 @@ public class Formula {
     }
 
     private boolean isFormulaSAT() {
-        for (int i = 0; i < numClauses; i++) {
+        for (int i = 0; i < clauseList.size(); i++) {
             if (!clauseList.get(i).isSAT()) {
                 return false;
             }
