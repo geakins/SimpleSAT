@@ -125,7 +125,7 @@ public class Clause {
 
     boolean containsLiteral(int literal) {
         for ( int lit : variables ) {
-            if ( Math.abs(lit) == Math.abs(literal) ) {
+            if ( Math.abs( lit ) == Math.abs( literal ) ) {
                 return true;
             }
         }

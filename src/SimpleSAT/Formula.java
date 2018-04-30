@@ -102,7 +102,7 @@ public class Formula {
         }
 
         // Sort the master list of literals such that the most frequent ones will be selected on first.
-        sortLiteralList();
+        //sortLiteralList();
         System.out.println("Literals: " + literalList);
 
         sc.close();
@@ -184,8 +184,8 @@ public class Formula {
 
             boolean nextValue = false;
 
-            leftLiteral = new Literal(nextLiteral, nextValue);
-            leftLiteralBranch.add(leftLiteral);
+            leftLiteral = new Literal( nextLiteral, nextValue );
+            leftLiteralBranch.add( leftLiteral );
 
             // Make the recursive calls
             //System.out.println("Left on " + nextLiteral);
@@ -197,8 +197,8 @@ public class Formula {
 
             //System.out.println("Right on " + nextLiteral );
             // Set up the parameters for the right branch with the new literal and a true value.
-            rightLiteral = new Literal(nextLiteral, !nextValue);
-            rightLiteralBranch.add(rightLiteral);
+            rightLiteral = new Literal( nextLiteral, !nextValue );
+            rightLiteralBranch.add( rightLiteral );
             int rightBranch = DPLL( dpllClauseList, rightLiteralBranch, allLiterals );
 
 
@@ -251,7 +251,7 @@ public class Formula {
                     if ( forcedLiterals.contains(oppositeLiteral) ) {
                         numberOfConflicts++;
                         //System.out.println("Conflict");
-                        if (dpllClauseList.size() < ( numClauses * 2) ) {
+                        if (dpllClauseList.size() < ( numClauses * 1.5 )) {
                             if (conflictLiterals.contains( forcedLiteral.getLiteral() )) {
                                 return -2;
                             }
@@ -293,6 +293,7 @@ public class Formula {
     // terminate unsat branches sooner.
     private int addConflictClause(ArrayList<Clause> dpllClauseList, ArrayList<Literal> assignedLiterals, Literal conflictLiteral ) {
         Literal tempLiteral;
+        Literal compTempLiteral;
         int literalNumber;
         int backtrackLiteral = MAX_VALUE;
         ArrayList<Integer> conflictClauseBuilder = new ArrayList<>(0);
@@ -303,26 +304,39 @@ public class Formula {
         literalNumber = conflictLiteral.getFullLiteral();
         // This loop builds up a list of literals that are in the same clauses as the conflict literal.
         for ( Clause clause : dpllClauseList ) {
-            if ( clause.isConflictClause() ) break;
+            if ( clause.isConflictClause() ) continue;
             // Check each clause in dpllClauseList to see if it contains the conflictLiteral
             if ( clause.containsLiteral( literalNumber )) {
                 conflictClauseBuilder = clause.getVariables();
                 for ( int lit : conflictClauseBuilder ) {
                     tempLiteral = new Literal( Math.abs(lit) );
-                    if ( lit > 0 ) {
+                    if (lit > 0) {
                         tempLiteral.complement();
                     }
-                    if (!conflictLiteralList.contains( tempLiteral ) && assignedLiterals.contains( tempLiteral )) {
-                        conflictLiteralList.add( tempLiteral );
-                        if ( assignedLiterals.indexOf( tempLiteral ) < backtrackLiteral ) {
-                            if ( !assignedLiterals.get(assignedLiterals.indexOf( tempLiteral )).isForced() ) {
-                                backtrackLiteral = assignedLiterals.indexOf( tempLiteral );
+                    compTempLiteral = new Literal(lit);
+                    compTempLiteral.setValue( !tempLiteral.getValue() );
+
+
+                    if (!conflictLiteralList.contains(tempLiteral)) {
+                        if (assignedLiterals.contains(tempLiteral)) {
+                            conflictLiteralList.add(tempLiteral);
+                            if (assignedLiterals.indexOf(tempLiteral) < backtrackLiteral) {
+                                if (!assignedLiterals.get(assignedLiterals.indexOf(tempLiteral)).isForced()) {
+                                    backtrackLiteral = assignedLiterals.indexOf(tempLiteral);
+                                }
+                            }
+                        } else if (assignedLiterals.contains(compTempLiteral)) {
+                            conflictLiteralList.add(compTempLiteral);
+                            if (assignedLiterals.indexOf(compTempLiteral) < backtrackLiteral) {
+                                if (!assignedLiterals.get(assignedLiterals.indexOf(compTempLiteral)).isForced()) {
+                                    backtrackLiteral = assignedLiterals.indexOf(compTempLiteral);
+                                }
                             }
                         }
                     }
-
                 }
             }
+
         }
 
         conflictClauseBuilder.clear();
@@ -345,7 +359,6 @@ public class Formula {
             backtrackLiteral = assignedLiterals.get(backtrackLiteral).getLiteral();
         }
 
-        //backtrackedLiterals.add(backtrackLiteral);
         // Convert the Integer List to an array, the format the Clause object takes.
         conflictClause = new Clause( IntegerListToIntArray( conflictClauseBuilder ));
         conflictClause.setConflictClause();
@@ -353,16 +366,19 @@ public class Formula {
         if (conflictClause.getSize() < 3 ) {
             return -2;
         }
-        else if ( conflictClause.getSize() > 6 ) {
-            return -2;
-        }
-        System.out.println(conflictClause);
-        System.out.println(backtrackLiteral);
-        if ( !dpllClauseList.contains( conflictClause )) {
-            //dpllClauseList.add(conflictClause);
+        if ( conflictClause.getSize() > 8 ) {
+           // return -2;
         }
 
-        return backtrackLiteral;
+        if ( !dpllClauseList.contains( conflictClause )) {
+            System.out.println("Conflict Clause: " + conflictClause);
+            System.out.println("Backtrack to: " + backtrackLiteral);
+            dpllClauseList.add(conflictClause);
+            return backtrackLiteral;
+        }
+        else {
+            return -2;
+        }
 }
 
     // This method must be called before each iteration through the DPLL function, since the algorithm uses the
