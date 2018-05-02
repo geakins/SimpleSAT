@@ -103,7 +103,7 @@ public class Formula {
         }
 
         // Sort the master list of literals such that the most frequent ones will be selected on first.
-        sortLiteralList();
+        //sortLiteralList();
         System.out.println("Literals: " + literalList);
 
         sc.close();
@@ -184,7 +184,6 @@ public class Formula {
             // If nextLiteral is not -1, then a literal has been picked.  Process it.
             // Set up the parameters for the left branch with the new literal and a false value.
             //boolean nextValue = randomBoolean.nextBoolean();
-
             boolean nextValue = false;
 
             //System.out.println("Left on " + nextLiteral );
@@ -262,7 +261,7 @@ public class Formula {
                             }
                             // Based on the literal being forced (the conflict literal), generate a conflict clause.
                             int x = addConflictClause(dpllClauseList, currentAssignedLiterals, forcedLiteral);
-                            conflictLiterals.add( forcedLiteral.getLiteral() );
+                            //conflictLiterals.add( forcedLiteral.getLiteral() );
                             if (backtrackLiterals.contains( x )) {
                                 break;
                             }
@@ -300,8 +299,9 @@ public class Formula {
         Literal compTempLiteral;
         int conflictLiteralNumber;
         int backtrackLiteral = MAX_VALUE;
-        ArrayList<Integer> conflictClauseBuilder = new ArrayList<>(0);
-        ArrayList<Literal> conflictLiteralList = new ArrayList<>(0);
+        ArrayList<Integer> conflictClauseBuilder;
+        ArrayList<Integer> conflictIntegerLiteralList = new ArrayList<>();
+        ArrayList<Literal> conflictLiteralList = new ArrayList<>();
         Clause conflictClause;
 
         // literalNumber stores the literal in the ±x form that is stored in a Clause.
@@ -325,6 +325,7 @@ public class Formula {
                         if (!conflictLiteralList.contains( tempLiteral )) {
                             if (assignedLiterals.contains(tempLiteral)) {
                                 conflictLiteralList.add(tempLiteral);
+                                conflictIntegerLiteralList.add( lit );
                                 if (assignedLiterals.indexOf(tempLiteral) < backtrackLiteral) {
                                     if (!assignedLiterals.get(assignedLiterals.indexOf(tempLiteral)).isForced()) {
                                         backtrackLiteral = assignedLiterals.indexOf(tempLiteral);
@@ -332,6 +333,7 @@ public class Formula {
                                 }
                             } else if (assignedLiterals.contains(compTempLiteral)) {
                                 conflictLiteralList.add(tempLiteral);
+                                conflictIntegerLiteralList.add( lit );
                                 if (assignedLiterals.indexOf(compTempLiteral) < backtrackLiteral) {
                                     if (!assignedLiterals.get(assignedLiterals.indexOf(compTempLiteral)).isForced()) {
                                         backtrackLiteral = assignedLiterals.indexOf(compTempLiteral);
@@ -345,20 +347,6 @@ public class Formula {
 
         }
 
-        conflictClauseBuilder.clear();
-        // Build conflict clause
-        for ( Literal conflictLit : conflictLiteralList ) {
-            int tempLit = conflictLit.getLiteral();
-
-            // Add the opposite literal of what the assigned value is.
-            if ( conflictLit.getValue() ) {
-                tempLit *= -1;
-            }
-            if ( !conflictClauseBuilder.contains( tempLit ) ) {
-                conflictClauseBuilder.add( tempLit );
-            }
-        }
-
         if ( backtrackLiteral > assignedLiterals.size() ) {
             return -2;
         } else {
@@ -366,8 +354,8 @@ public class Formula {
         }
 
         // Convert the Integer List to an array, the format the Clause object takes.
-        conflictClause = new Clause( IntegerListToIntArray( conflictClauseBuilder ));
-        conflictClause.setConflictClause();
+        conflictClause = new Clause( IntegerListToIntArray( conflictIntegerLiteralList ));
+        //conflictClause.setConflictClause();
 
         if ( conflictClause.getSize() < 3 ) {
             return -2;
