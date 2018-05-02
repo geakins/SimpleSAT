@@ -1,5 +1,6 @@
 package SimpleSAT;
 
+import javax.sound.midi.SysexMessage;
 import java.io.FileNotFoundException;
 import java.math.BigInteger;
 import java.util.*;
@@ -102,7 +103,7 @@ public class Formula {
         }
 
         // Sort the master list of literals such that the most frequent ones will be selected on first.
-        //sortLiteralList();
+        sortLiteralList();
         System.out.println("Literals: " + literalList);
 
         sc.close();
@@ -186,6 +187,7 @@ public class Formula {
 
             boolean nextValue = false;
 
+            //System.out.println("Left on " + nextLiteral );
             leftLiteral = new Literal( nextLiteral, nextValue );
             leftLiteralBranch.add( leftLiteral );
 
@@ -199,6 +201,7 @@ public class Formula {
 
             //System.out.println("Right on " + nextLiteral );
             // Set up the parameters for the right branch with the new literal and a true value.
+            //System.out.println("Right on " + nextLiteral );
             rightLiteral = new Literal( nextLiteral, !nextValue );
             rightLiteralBranch.add( rightLiteral );
             int rightBranch = DPLL( dpllClauseList, rightLiteralBranch, allLiterals );
@@ -295,42 +298,44 @@ public class Formula {
     private int addConflictClause(ArrayList<Clause> dpllClauseList, ArrayList<Literal> assignedLiterals, Literal conflictLiteral ) {
         Literal tempLiteral;
         Literal compTempLiteral;
-        int literalNumber;
+        int conflictLiteralNumber;
         int backtrackLiteral = MAX_VALUE;
         ArrayList<Integer> conflictClauseBuilder = new ArrayList<>(0);
         ArrayList<Literal> conflictLiteralList = new ArrayList<>(0);
         Clause conflictClause;
 
         // literalNumber stores the literal in the ±x form that is stored in a Clause.
-        literalNumber = conflictLiteral.getLiteral();
+        conflictLiteralNumber = conflictLiteral.getLiteral();
         // This loop builds up a list of literals that are in the same clauses as the conflict literal.
         for ( Clause clause : dpllClauseList ) {
             if ( clause.isConflictClause() ) continue;
             // Check each clause in dpllClauseList to see if it contains the conflictLiteral
-            if ( Math.abs( clause.findImplications()) == literalNumber ) {
+            if ( Math.abs( clause.findImplications()) == conflictLiteralNumber ) {
                 //if ( clause.containsLiteral( literalNumber )) {
                 conflictClauseBuilder = clause.getVariables();
                 for ( int lit : conflictClauseBuilder ) {
-                    tempLiteral = new Literal( Math.abs( lit ) );
-                    if (lit > 0) {
-                        tempLiteral.complement();
-                    }
-                    compTempLiteral = new Literal( Math.abs( lit ));
-                    compTempLiteral.setValue( !tempLiteral.getValue() );
+                    if (Math.abs(lit) != conflictLiteral.getLiteral()) {
+                        tempLiteral = new Literal(Math.abs(lit));
+                        if (lit < 0) {
+                            tempLiteral.complement();
+                        }
+                        compTempLiteral = new Literal(Math.abs(lit));
+                        compTempLiteral.setValue(!tempLiteral.getValue());
 
-                    if ( !conflictLiteralList.contains( tempLiteral )) {
-                        if ( assignedLiterals.contains( tempLiteral )) {
-                            conflictLiteralList.add( tempLiteral );
-                            if ( assignedLiterals.indexOf( tempLiteral ) < backtrackLiteral) {
-                                if ( !assignedLiterals.get(assignedLiterals.indexOf( tempLiteral )).isForced()) {
-                                    backtrackLiteral = assignedLiterals.indexOf(tempLiteral);
+                        if (!conflictLiteralList.contains( tempLiteral )) {
+                            if (assignedLiterals.contains(tempLiteral)) {
+                                conflictLiteralList.add(tempLiteral);
+                                if (assignedLiterals.indexOf(tempLiteral) < backtrackLiteral) {
+                                    if (!assignedLiterals.get(assignedLiterals.indexOf(tempLiteral)).isForced()) {
+                                        backtrackLiteral = assignedLiterals.indexOf(tempLiteral);
+                                    }
                                 }
-                            }
-                        } else if (assignedLiterals.contains( compTempLiteral )) {
-                            conflictLiteralList.add( tempLiteral );
-                            if ( assignedLiterals.indexOf( compTempLiteral ) < backtrackLiteral ) {
-                                if ( !assignedLiterals.get( assignedLiterals.indexOf( compTempLiteral )).isForced()) {
-                                    backtrackLiteral = assignedLiterals.indexOf( compTempLiteral );
+                            } else if (assignedLiterals.contains(compTempLiteral)) {
+                                conflictLiteralList.add(tempLiteral);
+                                if (assignedLiterals.indexOf(compTempLiteral) < backtrackLiteral) {
+                                    if (!assignedLiterals.get(assignedLiterals.indexOf(compTempLiteral)).isForced()) {
+                                        backtrackLiteral = assignedLiterals.indexOf(compTempLiteral);
+                                    }
                                 }
                             }
                         }
@@ -364,17 +369,17 @@ public class Formula {
         conflictClause = new Clause( IntegerListToIntArray( conflictClauseBuilder ));
         conflictClause.setConflictClause();
 
-        if (conflictClause.getSize() < 3 ) {
+        if ( conflictClause.getSize() < 3 ) {
             return -2;
         }
-        if ( conflictClause.getSize() > 8 ) {
-            //return -2;
+        if ( conflictClause.getSize() > 9 ) {
+            return -2;
         }
 
-        if ( !dpllClauseList.contains( conflictClause ) && !conflictClause.containsLiteral( 1 )) {
+        if ( !dpllClauseList.contains( conflictClause ) ) {
             System.out.println(conflictClause + " 0");
             //System.out.println("Backtrack to: " + backtrackLiteral);
-            dpllClauseList.add(conflictClause);
+            dpllClauseList.add( conflictClause );
             return backtrackLiteral;
         }
         else {
