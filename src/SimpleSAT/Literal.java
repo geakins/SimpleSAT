@@ -9,6 +9,8 @@ public class Literal {
     private int appearances;
     // If the literal is forced, it is marked as such.
     private boolean forced;
+    // This is true if the literal value is on a right branch.
+    private boolean rightBranch;
 
     // The constructor method.  This takes the array of integers in a[] and assigns them to the variables array.
     Literal(final int a) {
@@ -16,11 +18,13 @@ public class Literal {
         this.value = false;
         this.appearances = 0;
         this.forced = false;
+        this.rightBranch = false;
     }
 
     Literal(final int a, boolean v) {
         this.literal = a;
         this.value = v;
+        this.rightBranch = false;
     }
 
     Literal (Literal literalObject) {
@@ -28,6 +32,7 @@ public class Literal {
         value = literalObject.value;
         appearances = literalObject.appearances;
         forced = literalObject.forced;
+        rightBranch = literalObject.rightBranch;
     }
 
     void assign(boolean val) {
@@ -45,6 +50,10 @@ public class Literal {
     void setValue( boolean val ) {
         value = val;
     }
+
+    void setRightBranch() { rightBranch = true; }
+
+    boolean isRightBranch() { return rightBranch; }
 
     boolean getForced () {
         return forced;

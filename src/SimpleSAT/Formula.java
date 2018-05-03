@@ -103,7 +103,7 @@ public class Formula {
         }
 
         // Sort the master list of literals such that the most frequent ones will be selected on first.
-        //sortLiteralList();
+        sortLiteralList();
         System.out.println("Literals: " + literalList);
 
         sc.close();
@@ -183,8 +183,8 @@ public class Formula {
         } else {
             // If nextLiteral is not -1, then a literal has been picked.  Process it.
             // Set up the parameters for the left branch with the new literal and a false value.
-            //boolean nextValue = randomBoolean.nextBoolean();
-            boolean nextValue = false;
+            boolean nextValue = randomBoolean.nextBoolean();
+            //boolean nextValue = false;
 
             //System.out.println("Left on " + nextLiteral );
             leftLiteral = new Literal( nextLiteral, nextValue );
@@ -202,6 +202,7 @@ public class Formula {
             // Set up the parameters for the right branch with the new literal and a true value.
             //System.out.println("Right on " + nextLiteral );
             rightLiteral = new Literal( nextLiteral, !nextValue );
+            rightLiteral.setRightBranch();
             rightLiteralBranch.add( rightLiteral );
             int rightBranch = DPLL( dpllClauseList, rightLiteralBranch, allLiterals );
 
@@ -261,7 +262,7 @@ public class Formula {
                             }
                             // Based on the literal being forced (the conflict literal), generate a conflict clause.
                             int x = addConflictClause(dpllClauseList, currentAssignedLiterals, forcedLiteral);
-                            //conflictLiterals.add( forcedLiteral.getLiteral() );
+                            conflictLiterals.add( forcedLiteral.getLiteral() );
                             if (backtrackLiterals.contains( x )) {
                                 break;
                             }
@@ -323,20 +324,24 @@ public class Formula {
                         compTempLiteral.setValue(!tempLiteral.getValue());
 
                         if (!conflictLiteralList.contains( tempLiteral )) {
-                            if (assignedLiterals.contains(tempLiteral)) {
-                                conflictLiteralList.add(tempLiteral);
+                            if (assignedLiterals.contains( tempLiteral )) {
+                                conflictLiteralList.add( tempLiteral );
                                 conflictIntegerLiteralList.add( lit );
-                                if (assignedLiterals.indexOf(tempLiteral) < backtrackLiteral) {
-                                    if (!assignedLiterals.get(assignedLiterals.indexOf(tempLiteral)).isForced()) {
-                                        backtrackLiteral = assignedLiterals.indexOf(tempLiteral);
+                                if (assignedLiterals.indexOf( tempLiteral ) < backtrackLiteral ) {
+                                    if ( !assignedLiterals.get(assignedLiterals.indexOf( tempLiteral )).isForced()) {
+                                        if ( !assignedLiterals.get(assignedLiterals.indexOf( tempLiteral )).isRightBranch() ) {
+                                            backtrackLiteral = assignedLiterals.indexOf( tempLiteral );
+                                        }
                                     }
                                 }
-                            } else if (assignedLiterals.contains(compTempLiteral)) {
-                                conflictLiteralList.add(tempLiteral);
+                            } else if (assignedLiterals.contains( compTempLiteral )) {
+                                conflictLiteralList.add( tempLiteral );
                                 conflictIntegerLiteralList.add( lit );
-                                if (assignedLiterals.indexOf(compTempLiteral) < backtrackLiteral) {
-                                    if (!assignedLiterals.get(assignedLiterals.indexOf(compTempLiteral)).isForced()) {
-                                        backtrackLiteral = assignedLiterals.indexOf(compTempLiteral);
+                                if (assignedLiterals.indexOf( compTempLiteral ) < backtrackLiteral ) {
+                                    if (!assignedLiterals.get(assignedLiterals.indexOf( compTempLiteral )).isForced() ) {
+                                        if (!assignedLiterals.get(assignedLiterals.indexOf( compTempLiteral )).isRightBranch() ) {
+                                            backtrackLiteral = assignedLiterals.indexOf( compTempLiteral );
+                                        }
                                     }
                                 }
                             }
@@ -365,7 +370,7 @@ public class Formula {
         }
 
         if ( !dpllClauseList.contains( conflictClause ) ) {
-            System.out.println(conflictClause + " 0");
+            //System.out.println(conflictClause + " 0");
             //System.out.println("Backtrack to: " + backtrackLiteral);
             dpllClauseList.add( conflictClause );
             return backtrackLiteral;
