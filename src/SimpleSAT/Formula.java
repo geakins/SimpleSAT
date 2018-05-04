@@ -1,6 +1,5 @@
 package SimpleSAT;
 
-import javax.sound.midi.SysexMessage;
 import java.io.FileNotFoundException;
 import java.math.BigInteger;
 import java.util.*;
@@ -18,16 +17,12 @@ public class Formula {
     private ArrayList<Integer> conflictLiterals;
     private ArrayList<Integer> backtrackLiterals;
 
-
     private int numVariables, numClauses;
     private long numberOfDecisions;
     private long numberOfConflicts;
-    private long numberOfConflictClauses;
 
     private boolean isFormulaSAT = false;
-
-    private Random randomBoolean;
-
+    private boolean DEBUG = false;
 
     Formula(final String fileName) {
         importCNF(fileName);
@@ -36,8 +31,6 @@ public class Formula {
         backtrackLiterals = new ArrayList<>(0);
         numberOfDecisions = 0;
         numberOfConflicts = 0;
-        numberOfConflictClauses = 0;
-        randomBoolean = new Random();
     }
 
     /**
@@ -77,7 +70,7 @@ public class Formula {
         Literal literalCompare = new Literal(0);
         // Allocate the maximum amount of memory that could possibly be needed.
         int[] intBuffer = new int[numVariables*numClauses];
-        System.out.println("Clauses:");
+        if ( DEBUG ) System.out.println("Clauses:");
         for(int i = 0; sc.hasNextInt(); i++) {
             intBuffer[i] = sc.nextInt();
 
@@ -91,7 +84,7 @@ public class Formula {
             // Add the clause to the list if intBuffer is at the end of a line.
             if(intBuffer[i] == 0){
                 clauseList.add(new Clause(Arrays.copyOfRange(intBuffer, start, end)));
-                System.out.println(clauseList.get(clause));
+                if ( DEBUG ) System.out.println(clauseList.get(clause));
                 start = i + 1;
                 end = start;
                 clause++;
@@ -117,6 +110,8 @@ public class Formula {
             return;
         }
 
+        numberOfDecisions = 0;
+        numberOfConflicts = 0;
         DPLL( clauseList, assignedLiterals, literalList );
 
         if (!isFormulaSAT) {
@@ -181,15 +176,13 @@ public class Formula {
         } else {
             // If nextLiteral is not -1, then a literal has been picked.  Process it.
             // Set up the parameters for the left branch with the new literal and a false value.
-            //boolean nextValue = randomBoolean.nextBoolean();
             boolean nextValue = false;
 
-            //System.out.println("Left on " + nextLiteral );
             leftLiteral = new Literal( nextLiteral, nextValue );
             leftLiteralBranch.add( leftLiteral );
 
             // Make the recursive calls
-            //System.out.println("Left on " + nextLiteral);
+            if ( DEBUG ) System.out.println("Left on " + nextLiteral);
             int leftBranch = DPLL( dpllClauseList, leftLiteralBranch, allLiterals );
 
             if ( leftBranch > 0 && leftBranch != nextLiteral ) {
@@ -198,7 +191,7 @@ public class Formula {
 
             //System.out.println("Right on " + nextLiteral );
             // Set up the parameters for the right branch with the new literal and a true value.
-            //System.out.println("Right on " + nextLiteral );
+            if ( DEBUG ) System.out.println("Right on " + nextLiteral );
             rightLiteral = new Literal( nextLiteral, !nextValue );
             rightLiteral.setRightBranch();
             rightLiteralBranch.add( rightLiteral );
@@ -368,8 +361,10 @@ public class Formula {
         }
 
         if ( !dpllClauseList.contains( conflictClause ) ) {
-            //System.out.println(conflictClause + " 0");
-            //System.out.println("Backtrack to: " + backtrackLiteral);
+            if ( DEBUG ) {
+                System.out.println(conflictClause);
+                System.out.println("Backtrack to: " + backtrackLiteral);
+            }
             dpllClauseList.add( conflictClause );
             return backtrackLiteral;
         }
@@ -485,7 +480,6 @@ public class Formula {
 
         if ( literalMatchCounts != null ) {
             int listSize = clause1.getSize();
-            int literalMatches = literalMatchCounts.get(0);
             int literalExactMatches = literalMatchCounts.get(1);
             int literalComplementMatches = literalMatchCounts.get(2);
             int complementLiteral = literalMatchCounts.get(3);
@@ -688,17 +682,6 @@ public class Formula {
         return true;
     }
 
-    // In the event that we implement a clause list reduction, this method will delete all SAT clauses from a list.
-    private void pruneSATClauses(ArrayList<Clause> clauseListToPrune) {
-        Iterator<Clause> iterator = clauseListToPrune.iterator();
-
-        while (iterator.hasNext()) {
-            if (iterator.next().isSAT()) {
-                iterator.remove();
-            }
-        }
-    }
-
     public void bruteForceSolution() {
         int x = bruteForceSATSolver( clauseList, literalList );
 
@@ -757,17 +740,30 @@ public class Formula {
     private void printBruteForceSolution() {
         StringBuilder output = new StringBuilder(numVariables);
         int finalLiteral;
+        int finalValue;
+
+        output.append("RESULT: SAT \n");
+        output.append("ASSIGNMENT: ");
 
         for (Literal literal : literalList) {
             finalLiteral = literal.getLiteral();
-            if (!literal.getValue()) {
-                finalLiteral *= -1;
+            finalValue = 0;
+            // if the value assigned to a literal is true, assign value of 1.
+            if (literal.getValue()) {
+                finalValue = 1;
             }
             output.append(finalLiteral);
+            output.append("=");
+            output.append(finalValue);
             output.append(" ");
         }
 
         System.out.println(output.toString());
 
     }
+
+    void setDEBUG () {
+        DEBUG = true;
+    }
+
 }
