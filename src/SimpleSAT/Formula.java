@@ -91,8 +91,6 @@ public class Formula {
             // Add the clause to the list if intBuffer is at the end of a line.
             if(intBuffer[i] == 0){
                 clauseList.add(new Clause(Arrays.copyOfRange(intBuffer, start, end)));
-
-                //clauseList[clause] = new Clause(Arrays.copyOfRange(intBuffer, start, end));
                 System.out.println(clauseList.get(clause));
                 start = i + 1;
                 end = start;
@@ -183,8 +181,8 @@ public class Formula {
         } else {
             // If nextLiteral is not -1, then a literal has been picked.  Process it.
             // Set up the parameters for the left branch with the new literal and a false value.
-            boolean nextValue = randomBoolean.nextBoolean();
-            //boolean nextValue = false;
+            //boolean nextValue = randomBoolean.nextBoolean();
+            boolean nextValue = false;
 
             //System.out.println("Left on " + nextLiteral );
             leftLiteral = new Literal( nextLiteral, nextValue );
@@ -360,7 +358,7 @@ public class Formula {
 
         // Convert the Integer List to an array, the format the Clause object takes.
         conflictClause = new Clause( IntegerListToIntArray( conflictIntegerLiteralList ));
-        //conflictClause.setConflictClause();
+        conflictClause.setConflictClause();
 
         if ( conflictClause.getSize() < 3 ) {
             return -2;
