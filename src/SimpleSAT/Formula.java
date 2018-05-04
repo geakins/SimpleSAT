@@ -120,7 +120,6 @@ public class Formula {
             System.out.println("Conflicts: " + numberOfConflicts);
         }
         else {
-            //formulaSolution = new ArrayList<>(assignedLiterals);
             printFormulaSolution();
         }
     }
@@ -274,6 +273,7 @@ public class Formula {
             for ( Literal literal : forcedLiterals ) {
                 if (literal.getLiteral() != 0 && !removedLiterals.contains(literal)) {
                     literal.setForced();
+                    if ( DEBUG ) System.out.println("Value of " + literal + " forced.");
                     assignLiteralToClauses(dpllClauseList, literal);
                     currentAssignedLiterals.add(new Literal(literal));
                     removedLiterals.add(literal);
