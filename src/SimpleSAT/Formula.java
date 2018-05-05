@@ -314,6 +314,11 @@ public class Formula {
                         compTempLiteral = new Literal(Math.abs(lit));
                         compTempLiteral.setValue(!tempLiteral.getValue());
 
+                        // This if statement checks to see if the literal or its complement are in the conflict literal list and in the assigned literals.
+                        // It's a little bit long winded because the .contains() method needs the .equals() methods to be overridden
+                        // but it's already been overridden for another part of the algorithm.  Changing it again would affect several other areas,
+                        // so it's left as this big if statement for now.
+                        // This is where backtrack literal finds the earliest literal that it can backtrack to.
                         if (!conflictLiteralList.contains( tempLiteral )) {
                             if (assignedLiterals.contains( tempLiteral )) {
                                 conflictLiteralList.add( tempLiteral );
@@ -343,9 +348,13 @@ public class Formula {
 
         }
 
+
+        // It is possible for ALL of the literals in a conflict clause to be forced literals, in which case the only place
+        // to backtrack to is the last decision point.  Returning -2 here does just that (it goes up two levels to DPLL)
         if ( backtrackLiteral > assignedLiterals.size() ) {
             return -2;
         } else {
+            // Otherwise, get the integer value of the index stored earlier.
             backtrackLiteral = assignedLiterals.get( backtrackLiteral ).getLiteral();
         }
 
@@ -353,6 +362,7 @@ public class Formula {
         conflictClause = new Clause( IntegerListToIntArray( conflictIntegerLiteralList ));
         conflictClause.setConflictClause();
 
+        // These statements just limit the size of the conflict clause we add.
         if ( conflictClause.getSize() < 3 ) {
             return -2;
         }
@@ -404,8 +414,9 @@ public class Formula {
     // The second function is to reduce the clause list.  Clauses in the form (x + y + z)(x + y + z') will be
     // expanded to (x + y)
     private int expandClauseList() {
-        ArrayList<Clause> newClauses = new ArrayList<>(0);
-        ArrayList<Clause> clausesToRemove = new ArrayList<>(0);
+        ArrayList<Clause> newClauses = new ArrayList<>();
+        ArrayList<Clause> clausesToRemove = new ArrayList<>();
+        ArrayList<Clause> previousSublist = new ArrayList<>();
 
         // These two loops compare every clause to every other clause.
         for ( Clause clause1 : clauseList ) {
@@ -437,11 +448,11 @@ public class Formula {
 
                 }
             }
-            if ( dpllClauseSublist.size() > 2 ) {
+            if ( dpllClauseSublist.size() > 3 ) {
                 ArrayList<Literal> assignedLiterals = new ArrayList<>(1);
                 ArrayList<Literal> dpllLiteralList = clause1.getLiterals();
 
-                DPLL( dpllClauseSublist, assignedLiterals, dpllLiteralList );
+                DPLL(dpllClauseSublist, assignedLiterals, dpllLiteralList);
                 if (!isFormulaSAT) {
                     return -1;
                 } else {
